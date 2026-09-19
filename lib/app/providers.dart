@@ -13,6 +13,7 @@ import '../data/repositories/reincarnation_repository.dart';
 import '../data/services/alarm_scheduler.dart';
 import '../data/services/alarm_ring_handler.dart';
 import '../data/services/alarm_service.dart';
+import '../data/services/calendar_occurrence_service.dart';
 
 final databaseProvider = Provider<db.AppDatabase>((ref) {
   final database = db.AppDatabase();
@@ -61,6 +62,11 @@ final alarmRingHandlerProvider = Provider<AlarmRingHandler>((ref) {
   );
   ref.onDispose(handler.dispose);
   return handler;
+});
+
+final calendarOccurrenceServiceProvider =
+    Provider<CalendarOccurrenceService>((ref) {
+  return CalendarOccurrenceService();
 });
 
 final alarmsProvider = StreamProvider<List<AlarmModel>>((ref) {

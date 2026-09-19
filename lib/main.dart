@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/providers.dart';
 import 'features/alarms/alarms_screen.dart';
+import 'features/calendar/calendar_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,7 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: _selectedIndex == 0
           ? const AlarmsScreen()
-          : Center(child: Text(selectedScreen.title)),
+          : _selectedIndex == 1
+              ? const CalendarScreen()
+              : Center(child: Text(selectedScreen.title)),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),

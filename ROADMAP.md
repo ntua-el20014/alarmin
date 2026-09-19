@@ -221,10 +221,10 @@ Milestones:
 
 Milestones:
 
-1. Calendar provider derives occurrences for a bounded visible date range.
-2. Event markers and selected-day alarm list.
-3. Daily/weekly mode toggle.
-4. Shared live updates with the Alarms screen.
+1. [x] Calendar provider derives occurrences for a bounded visible date range.
+2. [x] Event markers and selected-day alarm list.
+3. [x] Daily/weekly mode toggle.
+4. [x] Shared live updates with the Alarms screen.
 
 ### Screen 3: Timer
 
@@ -274,7 +274,7 @@ Milestones:
 5. [x] Implement Riverpod providers and repository-backed state streams.
 6. [x] Implement alarm persistence/scheduling synchronization service, native scheduler boundary, alarm form, and ring-event rescheduling.
 7. [x] Implement Alarms list and grouped view.
-8. Implement Calendar occurrence calculation and markers.
+8. [x] Implement Calendar occurrence calculation, markers, and selected-day views.
 9. Implement Settings and connect the time-picker preference to the alarm form.
 10. Implement Timer lifecycle behavior with in-memory-only active state.
 11. Implement Stopwatch, persistence, and read-only history.
