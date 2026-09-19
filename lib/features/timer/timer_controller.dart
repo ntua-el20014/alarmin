@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:clock/clock.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../app/providers.dart';
 
 enum TimerStatus { idle, running, paused, completed }
 
@@ -56,8 +59,8 @@ class TimerController extends Notifier<TimerState> {
   void start() {
     if (state.remaining <= Duration.zero) return;
     _remainingAtStart = state.remaining;
-    _startedAt = DateTime.now();
     _stopTicker();
+    _startedAt = clock.now();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     state = state.copyWith(status: TimerStatus.running);
   }
@@ -85,6 +88,7 @@ class TimerController extends Notifier<TimerState> {
     _updateRemaining();
     if (state.remaining <= Duration.zero) {
       _stopTicker();
+      unawaited(ref.read(timerCompletionProvider).notify());
       state = state.copyWith(
         remaining: Duration.zero,
         status: TimerStatus.completed,
@@ -94,7 +98,7 @@ class TimerController extends Notifier<TimerState> {
 
   void _updateRemaining() {
     if (_startedAt == null) return;
-    final elapsed = DateTime.now().difference(_startedAt!);
+    final elapsed = clock.now().difference(_startedAt!);
     final remaining = _remainingAtStart - elapsed;
     state = state.copyWith(
       remaining: remaining.isNegative ? Duration.zero : remaining,

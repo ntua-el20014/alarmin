@@ -14,6 +14,7 @@ import '../data/services/alarm_scheduler.dart';
 import '../data/services/alarm_ring_handler.dart';
 import '../data/services/alarm_service.dart';
 import '../data/services/calendar_occurrence_service.dart';
+import '../features/timer/timer_completion_service.dart';
 
 final databaseProvider = Provider<db.AppDatabase>((ref) {
   final database = db.AppDatabase();
@@ -67,6 +68,10 @@ final alarmRingHandlerProvider = Provider<AlarmRingHandler>((ref) {
 final calendarOccurrenceServiceProvider =
     Provider<CalendarOccurrenceService>((ref) {
   return CalendarOccurrenceService();
+});
+
+final timerCompletionProvider = Provider<TimerCompletionNotifier>((ref) {
+  return NativeTimerCompletionNotifier();
 });
 
 final alarmsProvider = StreamProvider<List<AlarmModel>>((ref) {
