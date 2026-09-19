@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../data/models/alarm_model.dart';
+import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/recurrence_rule.dart';
 
@@ -335,8 +337,45 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(context: context, initialTime: _time);
+    final pickerStyle = ref.read(settingsProvider).when(
+          data: (settings) => settings.timePickerStyle,
+          loading: () => TimePickerStyle.materialClock,
+          error: (error, stackTrace) => TimePickerStyle.materialClock,
+        );
+    final picked = pickerStyle == TimePickerStyle.materialClock
+        ? await showTimePicker(context: context, initialTime: _time)
+        : await _showCupertinoTimePicker();
     if (picked != null && mounted) setState(() => _time = picked);
+  }
+
+  Future<TimeOfDay?> _showCupertinoTimePicker() async {
+    var selected = _time;
+    return showCupertinoModalPopup<TimeOfDay>(
+      context: context,
+      builder: (context) => Container(
+        height: 260,
+        color: CupertinoColors.systemBackground.resolveFrom(context),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: CupertinoButton(
+                child: const Text('Done'),
+                onPressed: () => Navigator.pop(context, selected),
+              ),
+            ),
+            Expanded(
+              child: CupertinoDatePicker(
+                mode: CupertinoDatePickerMode.time,
+                initialDateTime: DateTime(2026, 1, 1, _time.hour, _time.minute),
+                onDateTimeChanged: (value) =>
+                    selected = TimeOfDay.fromDateTime(value),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _pickDate() async {

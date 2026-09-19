@@ -259,10 +259,11 @@ Milestones:
 
 ### Screen 5: Settings
 
-- Render a list of typed settings and toggles overriding global behavior.
-- Add the `Time Picker` setting with `materialClock` and `cupertinoWheel` values.
-- The add/edit alarm flow reads this setting and launches either `showTimePicker` or `showCupertinoModalPopup` with a `CupertinoDatePicker`.
-- Persist changes immediately and make the setting observable by the alarm form.
+- [x] Render a list of typed settings and toggles overriding global behavior.
+- [x] Add the `Time Picker` setting with `materialClock` and `cupertinoWheel` values.
+- [x] The add/edit alarm flow reads this setting and launches either `showTimePicker` or `showCupertinoModalPopup` with a `CupertinoDatePicker`.
+- [x] Persist changes immediately and make the setting observable by the alarm form.
+- [x] Add editable and deletable categories; deleting one leaves alarms uncategorized.
 - Keep feature-specific defaults separate from global settings where possible.
 
 ## 4. Implementation Order
@@ -275,7 +276,7 @@ Milestones:
 6. [x] Implement alarm persistence/scheduling synchronization service, native scheduler boundary, alarm form, and ring-event rescheduling.
 7. [x] Implement Alarms list and grouped view.
 8. [x] Implement Calendar occurrence calculation, markers, and selected-day views.
-9. Implement Settings and connect the time-picker preference to the alarm form.
+9. [x] Implement Settings and connect the time-picker preference to the alarm form.
 10. Implement Timer lifecycle behavior with in-memory-only active state.
 11. Implement Stopwatch, persistence, and read-only history.
 12. Add platform-specific alarm permissions, background behavior, and lifecycle recovery.
