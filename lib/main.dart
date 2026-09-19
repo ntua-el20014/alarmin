@@ -5,6 +5,8 @@ import 'app/providers.dart';
 import 'features/alarms/alarms_screen.dart';
 import 'features/calendar/calendar_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/stopwatch/stopwatch_screen.dart';
+import 'features/timer/timer_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,9 +68,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ? const AlarmsScreen()
           : _selectedIndex == 1
               ? const CalendarScreen()
-              : _selectedIndex == 4
-                  ? const SettingsScreen()
-                  : Center(child: Text(selectedScreen.title)),
+              : _selectedIndex == 2
+                  ? const TimerScreen()
+                  : _selectedIndex == 3
+                      ? const StopwatchScreen()
+                      : _selectedIndex == 4
+                          ? const SettingsScreen()
+                          : Center(child: Text(selectedScreen.title)),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),

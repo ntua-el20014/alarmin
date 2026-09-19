@@ -33,7 +33,7 @@ void main() {
     await tester.tap(find.text('Timer').last);
     await tester.pump();
 
-    expect(find.text('Timer'), findsNWidgets(3));
+    expect(find.text('Timer'), findsNWidgets(2));
     expect(find.text('Alarms'), findsOneWidget);
   });
 }

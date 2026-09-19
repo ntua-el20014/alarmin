@@ -236,8 +236,8 @@ Milestones:
 
 Milestones:
 
-1. Duration picker and countdown display.
-2. Start/pause/resume/reset controller.
+1. [x] Duration picker and countdown display.
+2. [x] Start/pause/resume/reset controller.
 3. Completion sound/vibration and lifecycle handling.
 
 ### Screen 4: Stopwatch
@@ -252,10 +252,10 @@ Milestones:
 
 Milestones:
 
-1. In-memory stopwatch controller and elapsed display.
-2. Lap/checkpoint list with paused-state flagging.
-3. Save completed session and laps.
-4. History list, detail view, delete, and clear-history confirmation.
+1. [x] In-memory stopwatch controller and elapsed display.
+2. [x] Lap/checkpoint list with paused-state flagging.
+3. [x] Save completed session and laps.
+4. [x] History list, detail view, delete, and clear-history confirmation.
 
 ### Screen 5: Settings
 
@@ -277,8 +277,8 @@ Milestones:
 7. [x] Implement Alarms list and grouped view.
 8. [x] Implement Calendar occurrence calculation, markers, and selected-day views.
 9. [x] Implement Settings and connect the time-picker preference to the alarm form.
-10. Implement Timer lifecycle behavior with in-memory-only active state.
-11. Implement Stopwatch, persistence, and read-only history.
+10. [x] Implement Timer lifecycle behavior with in-memory-only active state. Completion audio/vibration remains pending native integration.
+11. [x] Implement Stopwatch, persistence, and read-only history.
 12. Add platform-specific alarm permissions, background behavior, and lifecycle recovery.
 13. Add tests and perform manual device validation on Android and iOS where available.
 

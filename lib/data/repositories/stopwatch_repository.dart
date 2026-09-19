@@ -43,6 +43,25 @@ class StopwatchRepository {
     });
   }
 
+  Future<List<domain.StopwatchLap>> lapsForSession(String sessionId) async {
+    final rows = await (_database.select(_database.stopwatchLaps)
+          ..where((lap) => lap.sessionId.equals(sessionId))
+          ..orderBy([(lap) => OrderingTerm(expression: lap.sequence)]))
+        .get();
+    return rows
+        .map(
+          (row) => domain.StopwatchLap(
+            id: row.id,
+            sessionId: row.sessionId,
+            sequence: row.sequence,
+            elapsedAtLapMs: row.elapsedAtLapMs,
+            lapDurationMs: row.lapDurationMs,
+            recordedAt: row.recordedAt,
+          ),
+        )
+        .toList();
+  }
+
   Future<void> deleteSession(String sessionId) {
     return (_database.delete(_database.stopwatchSessions)
           ..where((session) => session.id.equals(sessionId)))

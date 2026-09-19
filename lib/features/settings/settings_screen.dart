@@ -165,8 +165,11 @@ class _CategorySection extends ConsumerWidget {
     );
     nameController.dispose();
     emojiController.dispose();
-    if (result == null || result.$1.trim().isEmpty || result.$2.trim().isEmpty)
+    if (result == null ||
+        result.$1.trim().isEmpty ||
+        result.$2.trim().isEmpty) {
       return;
+    }
     final now = DateTime.now();
     await ref.read(categoryRepositoryProvider).save(
           CategoryModel(
