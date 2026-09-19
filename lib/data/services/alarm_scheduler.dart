@@ -4,6 +4,7 @@ import '../models/alarm_model.dart';
 
 abstract interface class AlarmScheduler {
   bool get isSupported;
+  Stream<int> get ringEvents;
   Future<void> initialize();
   Future<bool> schedule(AlarmModel alarm, DateTime occurrence);
   Future<bool> cancel(String alarmId);
@@ -12,6 +13,10 @@ abstract interface class AlarmScheduler {
 class NativeAlarmScheduler implements AlarmScheduler {
   @override
   bool get isSupported => native_alarm.Alarm.android || native_alarm.Alarm.iOS;
+
+  @override
+  Stream<int> get ringEvents =>
+      native_alarm.Alarm.ringStream.stream.map((settings) => settings.id);
 
   @override
   Future<void> initialize() async {

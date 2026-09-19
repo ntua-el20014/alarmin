@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -87,9 +89,13 @@ AlarmModel _alarm() {
 class FakeAlarmScheduler implements AlarmScheduler {
   final scheduled = <(AlarmModel, DateTime)>[];
   final cancelled = <String>[];
+  final ringEventsController = StreamController<int>.broadcast();
 
   @override
   bool get isSupported => true;
+
+  @override
+  Stream<int> get ringEvents => ringEventsController.stream;
 
   @override
   Future<void> initialize() async {}

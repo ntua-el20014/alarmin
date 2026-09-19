@@ -9,7 +9,9 @@ import '../data/repositories/alarm_repository.dart';
 import '../data/repositories/category_repository.dart';
 import '../data/repositories/settings_repository.dart';
 import '../data/repositories/stopwatch_repository.dart';
+import '../data/repositories/reincarnation_repository.dart';
 import '../data/services/alarm_scheduler.dart';
+import '../data/services/alarm_ring_handler.dart';
 import '../data/services/alarm_service.dart';
 
 final databaseProvider = Provider<db.AppDatabase>((ref) {
@@ -43,6 +45,22 @@ final alarmServiceProvider = Provider<AlarmService>((ref) {
     repository: ref.watch(alarmRepositoryProvider),
     scheduler: ref.watch(alarmSchedulerProvider),
   );
+});
+
+final reincarnationRepositoryProvider =
+    Provider<ReincarnationRepository>((ref) {
+  return ReincarnationRepository(ref.watch(databaseProvider));
+});
+
+final alarmRingHandlerProvider = Provider<AlarmRingHandler>((ref) {
+  final handler = AlarmRingHandler(
+    alarmRepository: ref.watch(alarmRepositoryProvider),
+    reincarnationRepository: ref.watch(reincarnationRepositoryProvider),
+    alarmService: ref.watch(alarmServiceProvider),
+    scheduler: ref.watch(alarmSchedulerProvider),
+  );
+  ref.onDispose(handler.dispose);
+  return handler;
 });
 
 final alarmsProvider = StreamProvider<List<AlarmModel>>((ref) {

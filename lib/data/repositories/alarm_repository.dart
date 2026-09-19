@@ -28,6 +28,17 @@ class AlarmRepository {
     });
   }
 
+  Future<AlarmModel?> findById(String alarmId) async {
+    final row = await (_database.select(_database.alarms)
+          ..where((alarm) => alarm.id.equals(alarmId)))
+        .getSingleOrNull();
+    if (row == null) return null;
+    final weekdays = await (_database.select(_database.alarmWeekdays)
+          ..where((weekday) => weekday.alarmId.equals(alarmId)))
+        .get();
+    return _toModel(row, weekdays.map((weekday) => weekday.weekday).toSet());
+  }
+
   Future<void> save(AlarmModel alarm) {
     return _database.transaction(() async {
       await _database.into(_database.alarms).insert(

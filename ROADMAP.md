@@ -208,7 +208,7 @@ Milestones:
 2. [x] Alarm list and grouped list.
 3. [x] Add/edit form and recurrence editor.
 4. Scheduler adapter and enable/disable synchronization.
-5. Ringing, snooze, reincarnation, and delete-after-use flow.
+5. [x] Ringing, snooze, reincarnation, and delete-after-use service flow.
 
 ### Screen 2: Calendar
 
@@ -272,7 +272,7 @@ Milestones:
 3. [x] Implement domain models, recurrence value objects, the initial Drift schema, and repositories.
 4. [x] Add the Drift migration strategy and seed default categories/settings. Add future schema-version migrations as the schema evolves.
 5. [x] Implement Riverpod providers and repository-backed state streams.
-6. [x] Implement alarm persistence/scheduling synchronization service, native scheduler boundary, and alarm form. Add ring-event rescheduling next.
+6. [x] Implement alarm persistence/scheduling synchronization service, native scheduler boundary, alarm form, and ring-event rescheduling.
 7. [x] Implement Alarms list and grouped view.
 8. Implement Calendar occurrence calculation and markers.
 9. Implement Settings and connect the time-picker preference to the alarm form.
