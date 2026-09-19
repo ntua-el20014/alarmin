@@ -23,4 +23,21 @@ class AppSettings {
   final String defaultRingtone;
   final VibrationSetting defaultVibration;
   final Duration defaultSnoozeDuration;
+
+  AppSettings copyWith({
+    TimePickerStyle? timePickerStyle,
+    bool? isGroupedView,
+    String? defaultRingtone,
+    VibrationSetting? defaultVibration,
+    Duration? defaultSnoozeDuration,
+  }) {
+    return AppSettings(
+      timePickerStyle: timePickerStyle ?? this.timePickerStyle,
+      isGroupedView: isGroupedView ?? this.isGroupedView,
+      defaultRingtone: defaultRingtone ?? this.defaultRingtone,
+      defaultVibration: defaultVibration ?? this.defaultVibration,
+      defaultSnoozeDuration:
+          defaultSnoozeDuration ?? this.defaultSnoozeDuration,
+    );
+  }
 }

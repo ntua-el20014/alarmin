@@ -25,6 +25,24 @@ void main() {
     await database.close();
   });
 
+  test('seeds default categories and settings on first open', () async {
+    final categoryRepository = CategoryRepository(database);
+    final settingsRepository = SettingsRepository(database);
+
+    final categories = await categoryRepository.watchCategories().first;
+    final settings = await settingsRepository.load();
+
+    expect(
+        categories.map((category) => category.id),
+        containsAll(<String>[
+          'category-personal',
+          'category-work',
+          'category-health',
+        ]));
+    expect(settings.timePickerStyle, TimePickerStyle.materialClock);
+    expect(settings.isGroupedView, isFalse);
+  });
+
   test('saves and reloads an alarm with normalized weekdays', () async {
     final repository = AlarmRepository(database);
     final alarm = _alarm(categoryId: 'work');
@@ -57,7 +75,8 @@ void main() {
 
     final loaded = await alarmRepository.watchAlarms().first;
     expect(loaded.single.categoryId, isNull);
-    expect(await categoryRepository.watchCategories().first, isEmpty);
+    final categories = await categoryRepository.watchCategories().first;
+    expect(categories.map((category) => category.id), isNot(contains('work')));
   });
 
   test('persists settings and completed stopwatch history', () async {

@@ -34,4 +34,43 @@ class AlarmModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? nextOccurrenceAt;
+
+  AlarmModel copyWith({
+    String? id,
+    String? title,
+    String? categoryId,
+    bool clearCategoryId = false,
+    RecurrenceRule? recurrence,
+    bool? isEnabled,
+    bool? deleteAfterUse,
+    String? ringtone,
+    VibrationSetting? vibration,
+    Duration? snoozeDuration,
+    int? reincarnationCount,
+    Duration? reincarnationInterval,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? nextOccurrenceAt,
+    bool clearNextOccurrenceAt = false,
+  }) {
+    return AlarmModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      categoryId: clearCategoryId ? null : categoryId ?? this.categoryId,
+      recurrence: recurrence ?? this.recurrence,
+      isEnabled: isEnabled ?? this.isEnabled,
+      deleteAfterUse: deleteAfterUse ?? this.deleteAfterUse,
+      ringtone: ringtone ?? this.ringtone,
+      vibration: vibration ?? this.vibration,
+      snoozeDuration: snoozeDuration ?? this.snoozeDuration,
+      reincarnationCount: reincarnationCount ?? this.reincarnationCount,
+      reincarnationInterval:
+          reincarnationInterval ?? this.reincarnationInterval,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      nextOccurrenceAt: clearNextOccurrenceAt
+          ? null
+          : nextOccurrenceAt ?? this.nextOccurrenceAt,
+    );
+  }
 }

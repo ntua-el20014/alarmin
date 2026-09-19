@@ -32,6 +32,7 @@ Suggested folders after implementation:
 lib/
   app/
     app.dart
+    providers.dart
     theme.dart
   core/
     time/
@@ -204,8 +205,8 @@ State and behavior:
 Milestones:
 
 1. [x] Alarm/category models and repositories.
-2. Alarm list and grouped list.
-3. Add/edit form and recurrence editor.
+2. [x] Alarm list and grouped list.
+3. [x] Add/edit form and recurrence editor.
 4. Scheduler adapter and enable/disable synchronization.
 5. Ringing, snooze, reincarnation, and delete-after-use flow.
 
@@ -269,10 +270,10 @@ Milestones:
 1. [x] Select Drift as the local database and verify package/platform compatibility.
 2. [x] Add the foundation packages and establish the initial data-layer folders.
 3. [x] Implement domain models, recurrence value objects, the initial Drift schema, and repositories.
-4. Implement database migrations beyond schema version 1 and seed/default categories.
-5. Implement Riverpod providers and repository-backed state streams.
-6. Implement alarm creation/editing and scheduler synchronization.
-7. Implement Alarms list and grouped view.
+4. [x] Add the Drift migration strategy and seed default categories/settings. Add future schema-version migrations as the schema evolves.
+5. [x] Implement Riverpod providers and repository-backed state streams.
+6. [x] Implement alarm persistence/scheduling synchronization service, native scheduler boundary, and alarm form. Add ring-event rescheduling next.
+7. [x] Implement Alarms list and grouped view.
 8. Implement Calendar occurrence calculation and markers.
 9. Implement Settings and connect the time-picker preference to the alarm form.
 10. Implement Timer lifecycle behavior with in-memory-only active state.

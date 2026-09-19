@@ -117,4 +117,54 @@ class AppDatabase extends _$AppDatabase {
 
   @override
   int get schemaVersion => 1;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (migrator) async {
+          await migrator.createAll();
+          await _seedDefaults();
+        },
+        onUpgrade: (migrator, from, to) async {
+          // Add future schema changes here as versioned migrations.
+        },
+      );
+
+  Future<void> _seedDefaults() async {
+    final now = DateTime.now();
+    await batch((batch) {
+      batch.insertAll(categories, [
+        CategoriesCompanion.insert(
+          id: 'category-personal',
+          name: 'Personal',
+          emoji: '🏠',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        CategoriesCompanion.insert(
+          id: 'category-work',
+          name: 'Work',
+          emoji: '💼',
+          createdAt: now,
+          updatedAt: now,
+        ),
+        CategoriesCompanion.insert(
+          id: 'category-health',
+          name: 'Health',
+          emoji: '❤️',
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ]);
+    });
+    await into(appSettingsTable).insert(
+      const AppSettingsTableCompanion(
+        id: Value(1),
+        timePickerStyle: Value(0),
+        isGroupedView: Value(false),
+        defaultRingtone: Value('default'),
+        defaultVibration: Value(1),
+        defaultSnoozeDurationSeconds: Value(600),
+      ),
+    );
+  }
 }
