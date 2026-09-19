@@ -11,7 +11,9 @@ import 'features/timer/timer_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final container = ProviderContainer();
-  await container.read(alarmSchedulerProvider).initialize();
+  final alarmService = container.read(alarmServiceProvider);
+  await alarmService.initialize();
+  await alarmService.recover();
   container.read(alarmRingHandlerProvider).start();
   runApp(
     UncontrolledProviderScope(
@@ -44,8 +46,36 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _recoverAlarms();
+    }
+  }
+
+  Future<void> _recoverAlarms() async {
+    if (!mounted) return;
+    await context
+        .findAncestorWidgetOfExactType<UncontrolledProviderScope>()
+        ?.container
+        .read(alarmServiceProvider)
+        .recover();
+  }
 
   static const _screens = <_AppScreen>[
     _AppScreen('Alarms', Icons.alarm),

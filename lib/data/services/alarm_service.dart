@@ -17,6 +17,17 @@ class AlarmService {
 
   Future<void> initialize() => _scheduler.initialize();
 
+  Future<void> recover() async {
+    await for (final alarms in _repository.watchAlarms()) {
+      for (final alarm in alarms) {
+        final updated = _withNextOccurrence(alarm);
+        await _repository.save(updated);
+        await _scheduleOrCancel(updated);
+      }
+      return;
+    }
+  }
+
   Future<void> save(AlarmModel alarm) async {
     final prepared = _withNextOccurrence(alarm);
     await _repository.save(prepared);

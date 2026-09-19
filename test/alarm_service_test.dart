@@ -58,6 +58,18 @@ void main() {
         isFalse);
   });
 
+  test('recovers enabled alarms from the database', () async {
+    await service.save(_alarm());
+    scheduler.scheduled.clear();
+    scheduler.cancelled.clear();
+
+    await service.recover();
+
+    expect(scheduler.cancelled, contains('alarm-1'));
+    expect(scheduler.scheduled, hasLength(1));
+    expect(scheduler.scheduled.single.$2, DateTime(2026, 9, 21, 7));
+  });
+
   test('maps a stable valid native id from a domain id', () {
     expect(nativeAlarmId('alarm-1'), nativeAlarmId('alarm-1'));
     expect(nativeAlarmId('alarm-1'), isNot(0));

@@ -279,8 +279,8 @@ Milestones:
 9. [x] Implement Settings and connect the time-picker preference to the alarm form.
 10. [x] Implement Timer lifecycle behavior with in-memory-only active state and native completion audio/vibration signaling.
 11. [x] Implement Stopwatch, persistence, and read-only history.
-12. Add platform-specific alarm permissions, background behavior, and lifecycle recovery.
-13. Add tests and perform manual device validation on Android and iOS where available.
+12. [x] Add platform-specific alarm permissions, background behavior, and lifecycle recovery.
+13. Add automated tests and perform manual device validation on Android and iOS where available. (Automated tests are complete; real-device validation remains pending.)
 
 ## 5. Testing And Acceptance Gates
 
