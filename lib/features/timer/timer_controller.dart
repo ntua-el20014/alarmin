@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -57,18 +58,29 @@ class TimerController extends Notifier<TimerState> {
   }
 
   void start() {
+    if (state.status == TimerStatus.running) return;
+    if (state.status == TimerStatus.completed) {
+      _cancelCompletion();
+      state = state.copyWith(remaining: state.duration);
+    }
     if (state.remaining <= Duration.zero) return;
     _remainingAtStart = state.remaining;
     _stopTicker();
     _startedAt = clock.now();
     _ticker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tick());
     state = state.copyWith(status: TimerStatus.running);
+    // The native alarm rings at completion even if this isolate is paused in
+    // the background; the ticker only drives the on-screen countdown.
+    _guard(ref
+        .read(timerCompletionProvider)
+        .scheduleCompletion(_startedAt!.add(_remainingAtStart)));
   }
 
   void pause() {
     if (state.status != TimerStatus.running) return;
     _updateRemaining();
     _stopTicker();
+    _cancelCompletion();
     state = state.copyWith(status: TimerStatus.paused);
   }
 
@@ -78,6 +90,7 @@ class TimerController extends Notifier<TimerState> {
 
   void reset() {
     _stopTicker();
+    _cancelCompletion();
     state = state.copyWith(
       remaining: state.duration,
       status: TimerStatus.idle,
@@ -88,7 +101,6 @@ class TimerController extends Notifier<TimerState> {
     _updateRemaining();
     if (state.remaining <= Duration.zero) {
       _stopTicker();
-      unawaited(ref.read(timerCompletionProvider).notify());
       state = state.copyWith(
         remaining: Duration.zero,
         status: TimerStatus.completed,
@@ -103,6 +115,15 @@ class TimerController extends Notifier<TimerState> {
     state = state.copyWith(
       remaining: remaining.isNegative ? Duration.zero : remaining,
     );
+  }
+
+  void _cancelCompletion() =>
+      _guard(ref.read(timerCompletionProvider).cancel());
+
+  void _guard(Future<void> future) {
+    unawaited(future.catchError((Object error) {
+      debugPrint('Timer alarm update failed: $error');
+    }));
   }
 
   void _stopTicker() {

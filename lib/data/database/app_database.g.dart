@@ -329,7 +329,10 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
   @override
   late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
       'category_id', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES categories (id) ON DELETE SET NULL'));
   static const VerificationMeta _scheduleTypeMeta =
       const VerificationMeta('scheduleType');
   @override
@@ -1267,7 +1270,10 @@ class $AlarmWeekdaysTable extends AlarmWeekdays
   @override
   late final GeneratedColumn<String> alarmId = GeneratedColumn<String>(
       'alarm_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES alarms (id) ON DELETE CASCADE'));
   static const VerificationMeta _weekdayMeta =
       const VerificationMeta('weekday');
   @override
@@ -1464,7 +1470,10 @@ class $ReincarnationRunsTable extends ReincarnationRuns
   @override
   late final GeneratedColumn<String> alarmId = GeneratedColumn<String>(
       'alarm_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES alarms (id) ON DELETE CASCADE'));
   static const VerificationMeta _originOccurrenceAtMeta =
       const VerificationMeta('originOccurrenceAt');
   @override
@@ -1488,9 +1497,36 @@ class $ReincarnationRunsTable extends ReincarnationRuns
   late final GeneratedColumn<int> status = GeneratedColumn<int>(
       'status', aliasedName, false,
       type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _firstFireAtMeta =
+      const VerificationMeta('firstFireAt');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, alarmId, originOccurrenceAt, remainingCount, nextFireAt, status];
+  late final GeneratedColumn<DateTime> firstFireAt = GeneratedColumn<DateTime>(
+      'first_fire_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _chainReincarnationCountMeta =
+      const VerificationMeta('chainReincarnationCount');
+  @override
+  late final GeneratedColumn<int> chainReincarnationCount =
+      GeneratedColumn<int>('chain_reincarnation_count', aliasedName, true,
+          type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _chainIntervalSecondsMeta =
+      const VerificationMeta('chainIntervalSeconds');
+  @override
+  late final GeneratedColumn<int> chainIntervalSeconds = GeneratedColumn<int>(
+      'chain_interval_seconds', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        alarmId,
+        originOccurrenceAt,
+        remainingCount,
+        nextFireAt,
+        status,
+        firstFireAt,
+        chainReincarnationCount,
+        chainIntervalSeconds
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1542,6 +1578,25 @@ class $ReincarnationRunsTable extends ReincarnationRuns
     } else if (isInserting) {
       context.missing(_statusMeta);
     }
+    if (data.containsKey('first_fire_at')) {
+      context.handle(
+          _firstFireAtMeta,
+          firstFireAt.isAcceptableOrUnknown(
+              data['first_fire_at']!, _firstFireAtMeta));
+    }
+    if (data.containsKey('chain_reincarnation_count')) {
+      context.handle(
+          _chainReincarnationCountMeta,
+          chainReincarnationCount.isAcceptableOrUnknown(
+              data['chain_reincarnation_count']!,
+              _chainReincarnationCountMeta));
+    }
+    if (data.containsKey('chain_interval_seconds')) {
+      context.handle(
+          _chainIntervalSecondsMeta,
+          chainIntervalSeconds.isAcceptableOrUnknown(
+              data['chain_interval_seconds']!, _chainIntervalSecondsMeta));
+    }
     return context;
   }
 
@@ -1564,6 +1619,13 @@ class $ReincarnationRunsTable extends ReincarnationRuns
           .read(DriftSqlType.dateTime, data['${effectivePrefix}next_fire_at'])!,
       status: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}status'])!,
+      firstFireAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}first_fire_at']),
+      chainReincarnationCount: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}chain_reincarnation_count']),
+      chainIntervalSeconds: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}chain_interval_seconds']),
     );
   }
 
@@ -1581,13 +1643,19 @@ class ReincarnationRun extends DataClass
   final int remainingCount;
   final DateTime nextFireAt;
   final int status;
+  final DateTime? firstFireAt;
+  final int? chainReincarnationCount;
+  final int? chainIntervalSeconds;
   const ReincarnationRun(
       {required this.id,
       required this.alarmId,
       required this.originOccurrenceAt,
       required this.remainingCount,
       required this.nextFireAt,
-      required this.status});
+      required this.status,
+      this.firstFireAt,
+      this.chainReincarnationCount,
+      this.chainIntervalSeconds});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1597,6 +1665,15 @@ class ReincarnationRun extends DataClass
     map['remaining_count'] = Variable<int>(remainingCount);
     map['next_fire_at'] = Variable<DateTime>(nextFireAt);
     map['status'] = Variable<int>(status);
+    if (!nullToAbsent || firstFireAt != null) {
+      map['first_fire_at'] = Variable<DateTime>(firstFireAt);
+    }
+    if (!nullToAbsent || chainReincarnationCount != null) {
+      map['chain_reincarnation_count'] = Variable<int>(chainReincarnationCount);
+    }
+    if (!nullToAbsent || chainIntervalSeconds != null) {
+      map['chain_interval_seconds'] = Variable<int>(chainIntervalSeconds);
+    }
     return map;
   }
 
@@ -1608,6 +1685,15 @@ class ReincarnationRun extends DataClass
       remainingCount: Value(remainingCount),
       nextFireAt: Value(nextFireAt),
       status: Value(status),
+      firstFireAt: firstFireAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(firstFireAt),
+      chainReincarnationCount: chainReincarnationCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chainReincarnationCount),
+      chainIntervalSeconds: chainIntervalSeconds == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chainIntervalSeconds),
     );
   }
 
@@ -1622,6 +1708,11 @@ class ReincarnationRun extends DataClass
       remainingCount: serializer.fromJson<int>(json['remainingCount']),
       nextFireAt: serializer.fromJson<DateTime>(json['nextFireAt']),
       status: serializer.fromJson<int>(json['status']),
+      firstFireAt: serializer.fromJson<DateTime?>(json['firstFireAt']),
+      chainReincarnationCount:
+          serializer.fromJson<int?>(json['chainReincarnationCount']),
+      chainIntervalSeconds:
+          serializer.fromJson<int?>(json['chainIntervalSeconds']),
     );
   }
   @override
@@ -1634,6 +1725,10 @@ class ReincarnationRun extends DataClass
       'remainingCount': serializer.toJson<int>(remainingCount),
       'nextFireAt': serializer.toJson<DateTime>(nextFireAt),
       'status': serializer.toJson<int>(status),
+      'firstFireAt': serializer.toJson<DateTime?>(firstFireAt),
+      'chainReincarnationCount':
+          serializer.toJson<int?>(chainReincarnationCount),
+      'chainIntervalSeconds': serializer.toJson<int?>(chainIntervalSeconds),
     };
   }
 
@@ -1643,7 +1738,10 @@ class ReincarnationRun extends DataClass
           DateTime? originOccurrenceAt,
           int? remainingCount,
           DateTime? nextFireAt,
-          int? status}) =>
+          int? status,
+          Value<DateTime?> firstFireAt = const Value.absent(),
+          Value<int?> chainReincarnationCount = const Value.absent(),
+          Value<int?> chainIntervalSeconds = const Value.absent()}) =>
       ReincarnationRun(
         id: id ?? this.id,
         alarmId: alarmId ?? this.alarmId,
@@ -1651,6 +1749,13 @@ class ReincarnationRun extends DataClass
         remainingCount: remainingCount ?? this.remainingCount,
         nextFireAt: nextFireAt ?? this.nextFireAt,
         status: status ?? this.status,
+        firstFireAt: firstFireAt.present ? firstFireAt.value : this.firstFireAt,
+        chainReincarnationCount: chainReincarnationCount.present
+            ? chainReincarnationCount.value
+            : this.chainReincarnationCount,
+        chainIntervalSeconds: chainIntervalSeconds.present
+            ? chainIntervalSeconds.value
+            : this.chainIntervalSeconds,
       );
   ReincarnationRun copyWithCompanion(ReincarnationRunsCompanion data) {
     return ReincarnationRun(
@@ -1665,6 +1770,14 @@ class ReincarnationRun extends DataClass
       nextFireAt:
           data.nextFireAt.present ? data.nextFireAt.value : this.nextFireAt,
       status: data.status.present ? data.status.value : this.status,
+      firstFireAt:
+          data.firstFireAt.present ? data.firstFireAt.value : this.firstFireAt,
+      chainReincarnationCount: data.chainReincarnationCount.present
+          ? data.chainReincarnationCount.value
+          : this.chainReincarnationCount,
+      chainIntervalSeconds: data.chainIntervalSeconds.present
+          ? data.chainIntervalSeconds.value
+          : this.chainIntervalSeconds,
     );
   }
 
@@ -1676,14 +1789,25 @@ class ReincarnationRun extends DataClass
           ..write('originOccurrenceAt: $originOccurrenceAt, ')
           ..write('remainingCount: $remainingCount, ')
           ..write('nextFireAt: $nextFireAt, ')
-          ..write('status: $status')
+          ..write('status: $status, ')
+          ..write('firstFireAt: $firstFireAt, ')
+          ..write('chainReincarnationCount: $chainReincarnationCount, ')
+          ..write('chainIntervalSeconds: $chainIntervalSeconds')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode => Object.hash(
-      id, alarmId, originOccurrenceAt, remainingCount, nextFireAt, status);
+      id,
+      alarmId,
+      originOccurrenceAt,
+      remainingCount,
+      nextFireAt,
+      status,
+      firstFireAt,
+      chainReincarnationCount,
+      chainIntervalSeconds);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1693,7 +1817,10 @@ class ReincarnationRun extends DataClass
           other.originOccurrenceAt == this.originOccurrenceAt &&
           other.remainingCount == this.remainingCount &&
           other.nextFireAt == this.nextFireAt &&
-          other.status == this.status);
+          other.status == this.status &&
+          other.firstFireAt == this.firstFireAt &&
+          other.chainReincarnationCount == this.chainReincarnationCount &&
+          other.chainIntervalSeconds == this.chainIntervalSeconds);
 }
 
 class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
@@ -1703,6 +1830,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
   final Value<int> remainingCount;
   final Value<DateTime> nextFireAt;
   final Value<int> status;
+  final Value<DateTime?> firstFireAt;
+  final Value<int?> chainReincarnationCount;
+  final Value<int?> chainIntervalSeconds;
   final Value<int> rowid;
   const ReincarnationRunsCompanion({
     this.id = const Value.absent(),
@@ -1711,6 +1841,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
     this.remainingCount = const Value.absent(),
     this.nextFireAt = const Value.absent(),
     this.status = const Value.absent(),
+    this.firstFireAt = const Value.absent(),
+    this.chainReincarnationCount = const Value.absent(),
+    this.chainIntervalSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ReincarnationRunsCompanion.insert({
@@ -1720,6 +1853,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
     required int remainingCount,
     required DateTime nextFireAt,
     required int status,
+    this.firstFireAt = const Value.absent(),
+    this.chainReincarnationCount = const Value.absent(),
+    this.chainIntervalSeconds = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         alarmId = Value(alarmId),
@@ -1734,6 +1870,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
     Expression<int>? remainingCount,
     Expression<DateTime>? nextFireAt,
     Expression<int>? status,
+    Expression<DateTime>? firstFireAt,
+    Expression<int>? chainReincarnationCount,
+    Expression<int>? chainIntervalSeconds,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1744,6 +1883,11 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
       if (remainingCount != null) 'remaining_count': remainingCount,
       if (nextFireAt != null) 'next_fire_at': nextFireAt,
       if (status != null) 'status': status,
+      if (firstFireAt != null) 'first_fire_at': firstFireAt,
+      if (chainReincarnationCount != null)
+        'chain_reincarnation_count': chainReincarnationCount,
+      if (chainIntervalSeconds != null)
+        'chain_interval_seconds': chainIntervalSeconds,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1755,6 +1899,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
       Value<int>? remainingCount,
       Value<DateTime>? nextFireAt,
       Value<int>? status,
+      Value<DateTime?>? firstFireAt,
+      Value<int?>? chainReincarnationCount,
+      Value<int?>? chainIntervalSeconds,
       Value<int>? rowid}) {
     return ReincarnationRunsCompanion(
       id: id ?? this.id,
@@ -1763,6 +1910,10 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
       remainingCount: remainingCount ?? this.remainingCount,
       nextFireAt: nextFireAt ?? this.nextFireAt,
       status: status ?? this.status,
+      firstFireAt: firstFireAt ?? this.firstFireAt,
+      chainReincarnationCount:
+          chainReincarnationCount ?? this.chainReincarnationCount,
+      chainIntervalSeconds: chainIntervalSeconds ?? this.chainIntervalSeconds,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1789,6 +1940,16 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
     if (status.present) {
       map['status'] = Variable<int>(status.value);
     }
+    if (firstFireAt.present) {
+      map['first_fire_at'] = Variable<DateTime>(firstFireAt.value);
+    }
+    if (chainReincarnationCount.present) {
+      map['chain_reincarnation_count'] =
+          Variable<int>(chainReincarnationCount.value);
+    }
+    if (chainIntervalSeconds.present) {
+      map['chain_interval_seconds'] = Variable<int>(chainIntervalSeconds.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1804,6 +1965,9 @@ class ReincarnationRunsCompanion extends UpdateCompanion<ReincarnationRun> {
           ..write('remainingCount: $remainingCount, ')
           ..write('nextFireAt: $nextFireAt, ')
           ..write('status: $status, ')
+          ..write('firstFireAt: $firstFireAt, ')
+          ..write('chainReincarnationCount: $chainReincarnationCount, ')
+          ..write('chainIntervalSeconds: $chainIntervalSeconds, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2177,7 +2341,10 @@ class $StopwatchLapsTable extends StopwatchLaps
   @override
   late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
       'session_id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
+      type: DriftSqlType.string,
+      requiredDuringInsert: true,
+      defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'REFERENCES stopwatch_sessions (id) ON DELETE CASCADE'));
   static const VerificationMeta _sequenceMeta =
       const VerificationMeta('sequence');
   @override
@@ -2922,6 +3089,39 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         stopwatchLaps,
         appSettingsTable
       ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('categories',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('alarms', kind: UpdateKind.update),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('alarms',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('alarm_weekdays', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('alarms',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('reincarnation_runs', kind: UpdateKind.delete),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('stopwatch_sessions',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('stopwatch_laps', kind: UpdateKind.delete),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
@@ -2940,6 +3140,25 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<DateTime> updatedAt,
   Value<int> rowid,
 });
+
+final class $$CategoriesTableReferences
+    extends BaseReferences<_$AppDatabase, $CategoriesTable, Category> {
+  $$CategoriesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$AlarmsTable, List<Alarm>> _alarmsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.alarms,
+          aliasName: 'categories__id__alarms__category_id');
+
+  $$AlarmsTableProcessedTableManager get alarmsRefs {
+    final manager = $$AlarmsTableTableManager($_db, $_db.alarms)
+        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_alarmsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
 
 class $$CategoriesTableFilterComposer
     extends Composer<_$AppDatabase, $CategoriesTable> {
@@ -2964,6 +3183,27 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> alarmsRefs(
+      Expression<bool> Function($$AlarmsTableFilterComposer f) f) {
+    final $$AlarmsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.categoryId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableFilterComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableOrderingComposer
@@ -3014,6 +3254,27 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  Expression<T> alarmsRefs<T extends Object>(
+      Expression<T> Function($$AlarmsTableAnnotationComposer a) f) {
+    final $$AlarmsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.categoryId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$CategoriesTableTableManager extends RootTableManager<
@@ -3025,9 +3286,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
     $$CategoriesTableAnnotationComposer,
     $$CategoriesTableCreateCompanionBuilder,
     $$CategoriesTableUpdateCompanionBuilder,
-    (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+    (Category, $$CategoriesTableReferences),
     Category,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool alarmsRefs})> {
   $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
       : super(TableManagerState(
           db: db,
@@ -3071,9 +3332,35 @@ class $$CategoriesTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$CategoriesTable, Category>(table),
+                    $$CategoriesTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({alarmsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (alarmsRefs) db.alarms],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (alarmsRefs)
+                    await $_getPrefetchedData<Category, $CategoriesTable,
+                            Alarm>(
+                        currentTable: table,
+                        referencedTable:
+                            $$CategoriesTableReferences._alarmsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$CategoriesTableReferences(db, table, p0)
+                                .alarmsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.categoryId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -3086,9 +3373,9 @@ typedef $$CategoriesTableProcessedTableManager = ProcessedTableManager<
     $$CategoriesTableAnnotationComposer,
     $$CategoriesTableCreateCompanionBuilder,
     $$CategoriesTableUpdateCompanionBuilder,
-    (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+    (Category, $$CategoriesTableReferences),
     Category,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool alarmsRefs})>;
 typedef $$AlarmsTableCreateCompanionBuilder = AlarmsCompanion Function({
   required String id,
   required String title,
@@ -3134,6 +3421,55 @@ typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
   Value<int> rowid,
 });
 
+final class $$AlarmsTableReferences
+    extends BaseReferences<_$AppDatabase, $AlarmsTable, Alarm> {
+  $$AlarmsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $CategoriesTable _categoryIdTable(_$AppDatabase db) =>
+      db.categories.createAlias('alarms__category_id__categories__id');
+
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<String>('category_id');
+    if ($_column == null) return null;
+    final manager = $$CategoriesTableTableManager($_db, $_db.categories)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$AlarmWeekdaysTable, List<AlarmWeekday>>
+      _alarmWeekdaysRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.alarmWeekdays,
+              aliasName: 'alarms__id__alarm_weekdays__alarm_id');
+
+  $$AlarmWeekdaysTableProcessedTableManager get alarmWeekdaysRefs {
+    final manager = $$AlarmWeekdaysTableTableManager($_db, $_db.alarmWeekdays)
+        .filter((f) => f.alarmId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_alarmWeekdaysRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+
+  static MultiTypedResultKey<$ReincarnationRunsTable, List<ReincarnationRun>>
+      _reincarnationRunsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.reincarnationRuns,
+              aliasName: 'alarms__id__reincarnation_runs__alarm_id');
+
+  $$ReincarnationRunsTableProcessedTableManager get reincarnationRunsRefs {
+    final manager =
+        $$ReincarnationRunsTableTableManager($_db, $_db.reincarnationRuns)
+            .filter((f) => f.alarmId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_reincarnationRunsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
 class $$AlarmsTableFilterComposer
     extends Composer<_$AppDatabase, $AlarmsTable> {
   $$AlarmsTableFilterComposer({
@@ -3148,9 +3484,6 @@ class $$AlarmsTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get categoryId => $composableBuilder(
-      column: $table.categoryId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get scheduleType => $composableBuilder(
       column: $table.scheduleType, builder: (column) => ColumnFilters(column));
@@ -3206,6 +3539,68 @@ class $$AlarmsTableFilterComposer
   ColumnFilters<DateTime> get nextOccurrenceAt => $composableBuilder(
       column: $table.nextOccurrenceAt,
       builder: (column) => ColumnFilters(column));
+
+  $$CategoriesTableFilterComposer get categoryId {
+    final $$CategoriesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.categoryId,
+        referencedTable: $db.categories,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CategoriesTableFilterComposer(
+              $db: $db,
+              $table: $db.categories,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> alarmWeekdaysRefs(
+      Expression<bool> Function($$AlarmWeekdaysTableFilterComposer f) f) {
+    final $$AlarmWeekdaysTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.alarmWeekdays,
+        getReferencedColumn: (t) => t.alarmId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmWeekdaysTableFilterComposer(
+              $db: $db,
+              $table: $db.alarmWeekdays,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<bool> reincarnationRunsRefs(
+      Expression<bool> Function($$ReincarnationRunsTableFilterComposer f) f) {
+    final $$ReincarnationRunsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.reincarnationRuns,
+        getReferencedColumn: (t) => t.alarmId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ReincarnationRunsTableFilterComposer(
+              $db: $db,
+              $table: $db.reincarnationRuns,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$AlarmsTableOrderingComposer
@@ -3222,9 +3617,6 @@ class $$AlarmsTableOrderingComposer
 
   ColumnOrderings<String> get title => $composableBuilder(
       column: $table.title, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get categoryId => $composableBuilder(
-      column: $table.categoryId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get scheduleType => $composableBuilder(
       column: $table.scheduleType,
@@ -3283,6 +3675,26 @@ class $$AlarmsTableOrderingComposer
   ColumnOrderings<DateTime> get nextOccurrenceAt => $composableBuilder(
       column: $table.nextOccurrenceAt,
       builder: (column) => ColumnOrderings(column));
+
+  $$CategoriesTableOrderingComposer get categoryId {
+    final $$CategoriesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.categoryId,
+        referencedTable: $db.categories,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CategoriesTableOrderingComposer(
+              $db: $db,
+              $table: $db.categories,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlarmsTableAnnotationComposer
@@ -3299,9 +3711,6 @@ class $$AlarmsTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumn<String> get categoryId => $composableBuilder(
-      column: $table.categoryId, builder: (column) => column);
 
   GeneratedColumn<int> get scheduleType => $composableBuilder(
       column: $table.scheduleType, builder: (column) => column);
@@ -3350,6 +3759,69 @@ class $$AlarmsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get nextOccurrenceAt => $composableBuilder(
       column: $table.nextOccurrenceAt, builder: (column) => column);
+
+  $$CategoriesTableAnnotationComposer get categoryId {
+    final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.categoryId,
+        referencedTable: $db.categories,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$CategoriesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.categories,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> alarmWeekdaysRefs<T extends Object>(
+      Expression<T> Function($$AlarmWeekdaysTableAnnotationComposer a) f) {
+    final $$AlarmWeekdaysTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.alarmWeekdays,
+        getReferencedColumn: (t) => t.alarmId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmWeekdaysTableAnnotationComposer(
+              $db: $db,
+              $table: $db.alarmWeekdays,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+
+  Expression<T> reincarnationRunsRefs<T extends Object>(
+      Expression<T> Function($$ReincarnationRunsTableAnnotationComposer a) f) {
+    final $$ReincarnationRunsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.id,
+            referencedTable: $db.reincarnationRuns,
+            getReferencedColumn: (t) => t.alarmId,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$ReincarnationRunsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.reincarnationRuns,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return f(composer);
+  }
 }
 
 class $$AlarmsTableTableManager extends RootTableManager<
@@ -3361,9 +3833,12 @@ class $$AlarmsTableTableManager extends RootTableManager<
     $$AlarmsTableAnnotationComposer,
     $$AlarmsTableCreateCompanionBuilder,
     $$AlarmsTableUpdateCompanionBuilder,
-    (Alarm, BaseReferences<_$AppDatabase, $AlarmsTable, Alarm>),
+    (Alarm, $$AlarmsTableReferences),
     Alarm,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function(
+        {bool categoryId,
+        bool alarmWeekdaysRefs,
+        bool reincarnationRunsRefs})> {
   $$AlarmsTableTableManager(_$AppDatabase db, $AlarmsTable table)
       : super(TableManagerState(
           db: db,
@@ -3463,9 +3938,79 @@ class $$AlarmsTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$AlarmsTable, Alarm>(table),
+                    $$AlarmsTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: (
+              {categoryId = false,
+              alarmWeekdaysRefs = false,
+              reincarnationRunsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (alarmWeekdaysRefs) db.alarmWeekdays,
+                if (reincarnationRunsRefs) db.reincarnationRuns
+              ],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (categoryId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.categoryId,
+                    referencedTable:
+                        $$AlarmsTableReferences._categoryIdTable(db),
+                    referencedColumn:
+                        $$AlarmsTableReferences._categoryIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (alarmWeekdaysRefs)
+                    await $_getPrefetchedData<Alarm, $AlarmsTable,
+                            AlarmWeekday>(
+                        currentTable: table,
+                        referencedTable:
+                            $$AlarmsTableReferences._alarmWeekdaysRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AlarmsTableReferences(db, table, p0)
+                                .alarmWeekdaysRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.alarmId == item.id),
+                        typedResults: items),
+                  if (reincarnationRunsRefs)
+                    await $_getPrefetchedData<Alarm, $AlarmsTable,
+                            ReincarnationRun>(
+                        currentTable: table,
+                        referencedTable: $$AlarmsTableReferences
+                            ._reincarnationRunsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$AlarmsTableReferences(db, table, p0)
+                                .reincarnationRunsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.alarmId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -3478,9 +4023,10 @@ typedef $$AlarmsTableProcessedTableManager = ProcessedTableManager<
     $$AlarmsTableAnnotationComposer,
     $$AlarmsTableCreateCompanionBuilder,
     $$AlarmsTableUpdateCompanionBuilder,
-    (Alarm, BaseReferences<_$AppDatabase, $AlarmsTable, Alarm>),
+    (Alarm, $$AlarmsTableReferences),
     Alarm,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function(
+        {bool categoryId, bool alarmWeekdaysRefs, bool reincarnationRunsRefs})>;
 typedef $$AlarmWeekdaysTableCreateCompanionBuilder = AlarmWeekdaysCompanion
     Function({
   required String alarmId,
@@ -3494,6 +4040,26 @@ typedef $$AlarmWeekdaysTableUpdateCompanionBuilder = AlarmWeekdaysCompanion
   Value<int> rowid,
 });
 
+final class $$AlarmWeekdaysTableReferences
+    extends BaseReferences<_$AppDatabase, $AlarmWeekdaysTable, AlarmWeekday> {
+  $$AlarmWeekdaysTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $AlarmsTable _alarmIdTable(_$AppDatabase db) =>
+      db.alarms.createAlias('alarm_weekdays__alarm_id__alarms__id');
+
+  $$AlarmsTableProcessedTableManager get alarmId {
+    final $_column = $_itemColumn<String>('alarm_id')!;
+
+    final manager = $$AlarmsTableTableManager($_db, $_db.alarms)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_alarmIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
 class $$AlarmWeekdaysTableFilterComposer
     extends Composer<_$AppDatabase, $AlarmWeekdaysTable> {
   $$AlarmWeekdaysTableFilterComposer({
@@ -3503,11 +4069,28 @@ class $$AlarmWeekdaysTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<String> get alarmId => $composableBuilder(
-      column: $table.alarmId, builder: (column) => ColumnFilters(column));
-
   ColumnFilters<int> get weekday => $composableBuilder(
       column: $table.weekday, builder: (column) => ColumnFilters(column));
+
+  $$AlarmsTableFilterComposer get alarmId {
+    final $$AlarmsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableFilterComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlarmWeekdaysTableOrderingComposer
@@ -3519,11 +4102,28 @@ class $$AlarmWeekdaysTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<String> get alarmId => $composableBuilder(
-      column: $table.alarmId, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<int> get weekday => $composableBuilder(
       column: $table.weekday, builder: (column) => ColumnOrderings(column));
+
+  $$AlarmsTableOrderingComposer get alarmId {
+    final $$AlarmsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableOrderingComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlarmWeekdaysTableAnnotationComposer
@@ -3535,11 +4135,28 @@ class $$AlarmWeekdaysTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<String> get alarmId =>
-      $composableBuilder(column: $table.alarmId, builder: (column) => column);
-
   GeneratedColumn<int> get weekday =>
       $composableBuilder(column: $table.weekday, builder: (column) => column);
+
+  $$AlarmsTableAnnotationComposer get alarmId {
+    final $$AlarmsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$AlarmWeekdaysTableTableManager extends RootTableManager<
@@ -3551,12 +4168,9 @@ class $$AlarmWeekdaysTableTableManager extends RootTableManager<
     $$AlarmWeekdaysTableAnnotationComposer,
     $$AlarmWeekdaysTableCreateCompanionBuilder,
     $$AlarmWeekdaysTableUpdateCompanionBuilder,
-    (
-      AlarmWeekday,
-      BaseReferences<_$AppDatabase, $AlarmWeekdaysTable, AlarmWeekday>
-    ),
+    (AlarmWeekday, $$AlarmWeekdaysTableReferences),
     AlarmWeekday,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool alarmId})> {
   $$AlarmWeekdaysTableTableManager(_$AppDatabase db, $AlarmWeekdaysTable table)
       : super(TableManagerState(
           db: db,
@@ -3588,9 +4202,46 @@ class $$AlarmWeekdaysTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$AlarmWeekdaysTable, AlarmWeekday>(table),
+                    $$AlarmWeekdaysTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({alarmId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (alarmId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.alarmId,
+                    referencedTable:
+                        $$AlarmWeekdaysTableReferences._alarmIdTable(db),
+                    referencedColumn:
+                        $$AlarmWeekdaysTableReferences._alarmIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
@@ -3603,12 +4254,9 @@ typedef $$AlarmWeekdaysTableProcessedTableManager = ProcessedTableManager<
     $$AlarmWeekdaysTableAnnotationComposer,
     $$AlarmWeekdaysTableCreateCompanionBuilder,
     $$AlarmWeekdaysTableUpdateCompanionBuilder,
-    (
-      AlarmWeekday,
-      BaseReferences<_$AppDatabase, $AlarmWeekdaysTable, AlarmWeekday>
-    ),
+    (AlarmWeekday, $$AlarmWeekdaysTableReferences),
     AlarmWeekday,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool alarmId})>;
 typedef $$ReincarnationRunsTableCreateCompanionBuilder
     = ReincarnationRunsCompanion Function({
   required String id,
@@ -3617,6 +4265,9 @@ typedef $$ReincarnationRunsTableCreateCompanionBuilder
   required int remainingCount,
   required DateTime nextFireAt,
   required int status,
+  Value<DateTime?> firstFireAt,
+  Value<int?> chainReincarnationCount,
+  Value<int?> chainIntervalSeconds,
   Value<int> rowid,
 });
 typedef $$ReincarnationRunsTableUpdateCompanionBuilder
@@ -3627,8 +4278,31 @@ typedef $$ReincarnationRunsTableUpdateCompanionBuilder
   Value<int> remainingCount,
   Value<DateTime> nextFireAt,
   Value<int> status,
+  Value<DateTime?> firstFireAt,
+  Value<int?> chainReincarnationCount,
+  Value<int?> chainIntervalSeconds,
   Value<int> rowid,
 });
+
+final class $$ReincarnationRunsTableReferences extends BaseReferences<
+    _$AppDatabase, $ReincarnationRunsTable, ReincarnationRun> {
+  $$ReincarnationRunsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $AlarmsTable _alarmIdTable(_$AppDatabase db) =>
+      db.alarms.createAlias('reincarnation_runs__alarm_id__alarms__id');
+
+  $$AlarmsTableProcessedTableManager get alarmId {
+    final $_column = $_itemColumn<String>('alarm_id')!;
+
+    final manager = $$AlarmsTableTableManager($_db, $_db.alarms)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_alarmIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
 
 class $$ReincarnationRunsTableFilterComposer
     extends Composer<_$AppDatabase, $ReincarnationRunsTable> {
@@ -3641,9 +4315,6 @@ class $$ReincarnationRunsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get alarmId => $composableBuilder(
-      column: $table.alarmId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get originOccurrenceAt => $composableBuilder(
       column: $table.originOccurrenceAt,
@@ -3658,6 +4329,37 @@ class $$ReincarnationRunsTableFilterComposer
 
   ColumnFilters<int> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get firstFireAt => $composableBuilder(
+      column: $table.firstFireAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get chainReincarnationCount => $composableBuilder(
+      column: $table.chainReincarnationCount,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get chainIntervalSeconds => $composableBuilder(
+      column: $table.chainIntervalSeconds,
+      builder: (column) => ColumnFilters(column));
+
+  $$AlarmsTableFilterComposer get alarmId {
+    final $$AlarmsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableFilterComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$ReincarnationRunsTableOrderingComposer
@@ -3672,9 +4374,6 @@ class $$ReincarnationRunsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get alarmId => $composableBuilder(
-      column: $table.alarmId, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<DateTime> get originOccurrenceAt => $composableBuilder(
       column: $table.originOccurrenceAt,
       builder: (column) => ColumnOrderings(column));
@@ -3688,6 +4387,37 @@ class $$ReincarnationRunsTableOrderingComposer
 
   ColumnOrderings<int> get status => $composableBuilder(
       column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get firstFireAt => $composableBuilder(
+      column: $table.firstFireAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get chainReincarnationCount => $composableBuilder(
+      column: $table.chainReincarnationCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get chainIntervalSeconds => $composableBuilder(
+      column: $table.chainIntervalSeconds,
+      builder: (column) => ColumnOrderings(column));
+
+  $$AlarmsTableOrderingComposer get alarmId {
+    final $$AlarmsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableOrderingComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$ReincarnationRunsTableAnnotationComposer
@@ -3702,9 +4432,6 @@ class $$ReincarnationRunsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get alarmId =>
-      $composableBuilder(column: $table.alarmId, builder: (column) => column);
-
   GeneratedColumn<DateTime> get originOccurrenceAt => $composableBuilder(
       column: $table.originOccurrenceAt, builder: (column) => column);
 
@@ -3716,6 +4443,35 @@ class $$ReincarnationRunsTableAnnotationComposer
 
   GeneratedColumn<int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstFireAt => $composableBuilder(
+      column: $table.firstFireAt, builder: (column) => column);
+
+  GeneratedColumn<int> get chainReincarnationCount => $composableBuilder(
+      column: $table.chainReincarnationCount, builder: (column) => column);
+
+  GeneratedColumn<int> get chainIntervalSeconds => $composableBuilder(
+      column: $table.chainIntervalSeconds, builder: (column) => column);
+
+  $$AlarmsTableAnnotationComposer get alarmId {
+    final $$AlarmsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.alarmId,
+        referencedTable: $db.alarms,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$AlarmsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.alarms,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$ReincarnationRunsTableTableManager extends RootTableManager<
@@ -3727,12 +4483,9 @@ class $$ReincarnationRunsTableTableManager extends RootTableManager<
     $$ReincarnationRunsTableAnnotationComposer,
     $$ReincarnationRunsTableCreateCompanionBuilder,
     $$ReincarnationRunsTableUpdateCompanionBuilder,
-    (
-      ReincarnationRun,
-      BaseReferences<_$AppDatabase, $ReincarnationRunsTable, ReincarnationRun>
-    ),
+    (ReincarnationRun, $$ReincarnationRunsTableReferences),
     ReincarnationRun,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool alarmId})> {
   $$ReincarnationRunsTableTableManager(
       _$AppDatabase db, $ReincarnationRunsTable table)
       : super(TableManagerState(
@@ -3752,6 +4505,9 @@ class $$ReincarnationRunsTableTableManager extends RootTableManager<
             Value<int> remainingCount = const Value.absent(),
             Value<DateTime> nextFireAt = const Value.absent(),
             Value<int> status = const Value.absent(),
+            Value<DateTime?> firstFireAt = const Value.absent(),
+            Value<int?> chainReincarnationCount = const Value.absent(),
+            Value<int?> chainIntervalSeconds = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ReincarnationRunsCompanion(
@@ -3761,6 +4517,9 @@ class $$ReincarnationRunsTableTableManager extends RootTableManager<
             remainingCount: remainingCount,
             nextFireAt: nextFireAt,
             status: status,
+            firstFireAt: firstFireAt,
+            chainReincarnationCount: chainReincarnationCount,
+            chainIntervalSeconds: chainIntervalSeconds,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -3770,6 +4529,9 @@ class $$ReincarnationRunsTableTableManager extends RootTableManager<
             required int remainingCount,
             required DateTime nextFireAt,
             required int status,
+            Value<DateTime?> firstFireAt = const Value.absent(),
+            Value<int?> chainReincarnationCount = const Value.absent(),
+            Value<int?> chainIntervalSeconds = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               ReincarnationRunsCompanion.insert(
@@ -3779,12 +4541,53 @@ class $$ReincarnationRunsTableTableManager extends RootTableManager<
             remainingCount: remainingCount,
             nextFireAt: nextFireAt,
             status: status,
+            firstFireAt: firstFireAt,
+            chainReincarnationCount: chainReincarnationCount,
+            chainIntervalSeconds: chainIntervalSeconds,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$ReincarnationRunsTable, ReincarnationRun>(
+                        table),
+                    $$ReincarnationRunsTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({alarmId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (alarmId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.alarmId,
+                    referencedTable:
+                        $$ReincarnationRunsTableReferences._alarmIdTable(db),
+                    referencedColumn:
+                        $$ReincarnationRunsTableReferences._alarmIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
@@ -3797,12 +4600,9 @@ typedef $$ReincarnationRunsTableProcessedTableManager = ProcessedTableManager<
     $$ReincarnationRunsTableAnnotationComposer,
     $$ReincarnationRunsTableCreateCompanionBuilder,
     $$ReincarnationRunsTableUpdateCompanionBuilder,
-    (
-      ReincarnationRun,
-      BaseReferences<_$AppDatabase, $ReincarnationRunsTable, ReincarnationRun>
-    ),
+    (ReincarnationRun, $$ReincarnationRunsTableReferences),
     ReincarnationRun,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool alarmId})>;
 typedef $$StopwatchSessionsTableCreateCompanionBuilder
     = StopwatchSessionsCompanion Function({
   required String id,
@@ -3823,6 +4623,26 @@ typedef $$StopwatchSessionsTableUpdateCompanionBuilder
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
+
+final class $$StopwatchSessionsTableReferences extends BaseReferences<
+    _$AppDatabase, $StopwatchSessionsTable, StopwatchSession> {
+  $$StopwatchSessionsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$StopwatchLapsTable, List<StopwatchLap>>
+      _stopwatchLapsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.stopwatchLaps,
+              aliasName: 'stopwatch_sessions__id__stopwatch_laps__session_id');
+
+  $$StopwatchLapsTableProcessedTableManager get stopwatchLapsRefs {
+    final manager = $$StopwatchLapsTableTableManager($_db, $_db.stopwatchLaps)
+        .filter((f) => f.sessionId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_stopwatchLapsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
 
 class $$StopwatchSessionsTableFilterComposer
     extends Composer<_$AppDatabase, $StopwatchSessionsTable> {
@@ -3850,6 +4670,27 @@ class $$StopwatchSessionsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> stopwatchLapsRefs(
+      Expression<bool> Function($$StopwatchLapsTableFilterComposer f) f) {
+    final $$StopwatchLapsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.stopwatchLaps,
+        getReferencedColumn: (t) => t.sessionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StopwatchLapsTableFilterComposer(
+              $db: $db,
+              $table: $db.stopwatchLaps,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$StopwatchSessionsTableOrderingComposer
@@ -3906,6 +4747,27 @@ class $$StopwatchSessionsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> stopwatchLapsRefs<T extends Object>(
+      Expression<T> Function($$StopwatchLapsTableAnnotationComposer a) f) {
+    final $$StopwatchLapsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.stopwatchLaps,
+        getReferencedColumn: (t) => t.sessionId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StopwatchLapsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.stopwatchLaps,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
 }
 
 class $$StopwatchSessionsTableTableManager extends RootTableManager<
@@ -3917,12 +4779,9 @@ class $$StopwatchSessionsTableTableManager extends RootTableManager<
     $$StopwatchSessionsTableAnnotationComposer,
     $$StopwatchSessionsTableCreateCompanionBuilder,
     $$StopwatchSessionsTableUpdateCompanionBuilder,
-    (
-      StopwatchSession,
-      BaseReferences<_$AppDatabase, $StopwatchSessionsTable, StopwatchSession>
-    ),
+    (StopwatchSession, $$StopwatchSessionsTableReferences),
     StopwatchSession,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool stopwatchLapsRefs})> {
   $$StopwatchSessionsTableTableManager(
       _$AppDatabase db, $StopwatchSessionsTable table)
       : super(TableManagerState(
@@ -3972,9 +4831,38 @@ class $$StopwatchSessionsTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$StopwatchSessionsTable, StopwatchSession>(
+                        table),
+                    $$StopwatchSessionsTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({stopwatchLapsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (stopwatchLapsRefs) db.stopwatchLaps
+              ],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (stopwatchLapsRefs)
+                    await $_getPrefetchedData<StopwatchSession,
+                            $StopwatchSessionsTable, StopwatchLap>(
+                        currentTable: table,
+                        referencedTable: $$StopwatchSessionsTableReferences
+                            ._stopwatchLapsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$StopwatchSessionsTableReferences(db, table, p0)
+                                .stopwatchLapsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.sessionId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
@@ -3987,12 +4875,9 @@ typedef $$StopwatchSessionsTableProcessedTableManager = ProcessedTableManager<
     $$StopwatchSessionsTableAnnotationComposer,
     $$StopwatchSessionsTableCreateCompanionBuilder,
     $$StopwatchSessionsTableUpdateCompanionBuilder,
-    (
-      StopwatchSession,
-      BaseReferences<_$AppDatabase, $StopwatchSessionsTable, StopwatchSession>
-    ),
+    (StopwatchSession, $$StopwatchSessionsTableReferences),
     StopwatchSession,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool stopwatchLapsRefs})>;
 typedef $$StopwatchLapsTableCreateCompanionBuilder = StopwatchLapsCompanion
     Function({
   required String id,
@@ -4014,6 +4899,28 @@ typedef $$StopwatchLapsTableUpdateCompanionBuilder = StopwatchLapsCompanion
   Value<int> rowid,
 });
 
+final class $$StopwatchLapsTableReferences
+    extends BaseReferences<_$AppDatabase, $StopwatchLapsTable, StopwatchLap> {
+  $$StopwatchLapsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $StopwatchSessionsTable _sessionIdTable(_$AppDatabase db) =>
+      db.stopwatchSessions
+          .createAlias('stopwatch_laps__session_id__stopwatch_sessions__id');
+
+  $$StopwatchSessionsTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager =
+        $$StopwatchSessionsTableTableManager($_db, $_db.stopwatchSessions)
+            .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
 class $$StopwatchLapsTableFilterComposer
     extends Composer<_$AppDatabase, $StopwatchLapsTable> {
   $$StopwatchLapsTableFilterComposer({
@@ -4025,9 +4932,6 @@ class $$StopwatchLapsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get sessionId => $composableBuilder(
-      column: $table.sessionId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get sequence => $composableBuilder(
       column: $table.sequence, builder: (column) => ColumnFilters(column));
@@ -4041,6 +4945,26 @@ class $$StopwatchLapsTableFilterComposer
 
   ColumnFilters<DateTime> get recordedAt => $composableBuilder(
       column: $table.recordedAt, builder: (column) => ColumnFilters(column));
+
+  $$StopwatchSessionsTableFilterComposer get sessionId {
+    final $$StopwatchSessionsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sessionId,
+        referencedTable: $db.stopwatchSessions,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StopwatchSessionsTableFilterComposer(
+              $db: $db,
+              $table: $db.stopwatchSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$StopwatchLapsTableOrderingComposer
@@ -4055,9 +4979,6 @@ class $$StopwatchLapsTableOrderingComposer
   ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<String> get sessionId => $composableBuilder(
-      column: $table.sessionId, builder: (column) => ColumnOrderings(column));
-
   ColumnOrderings<int> get sequence => $composableBuilder(
       column: $table.sequence, builder: (column) => ColumnOrderings(column));
 
@@ -4071,6 +4992,26 @@ class $$StopwatchLapsTableOrderingComposer
 
   ColumnOrderings<DateTime> get recordedAt => $composableBuilder(
       column: $table.recordedAt, builder: (column) => ColumnOrderings(column));
+
+  $$StopwatchSessionsTableOrderingComposer get sessionId {
+    final $$StopwatchSessionsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sessionId,
+        referencedTable: $db.stopwatchSessions,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$StopwatchSessionsTableOrderingComposer(
+              $db: $db,
+              $table: $db.stopwatchSessions,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
 }
 
 class $$StopwatchLapsTableAnnotationComposer
@@ -4085,9 +5026,6 @@ class $$StopwatchLapsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<String> get sessionId =>
-      $composableBuilder(column: $table.sessionId, builder: (column) => column);
-
   GeneratedColumn<int> get sequence =>
       $composableBuilder(column: $table.sequence, builder: (column) => column);
 
@@ -4099,6 +5037,27 @@ class $$StopwatchLapsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get recordedAt => $composableBuilder(
       column: $table.recordedAt, builder: (column) => column);
+
+  $$StopwatchSessionsTableAnnotationComposer get sessionId {
+    final $$StopwatchSessionsTableAnnotationComposer composer =
+        $composerBuilder(
+            composer: this,
+            getCurrentColumn: (t) => t.sessionId,
+            referencedTable: $db.stopwatchSessions,
+            getReferencedColumn: (t) => t.id,
+            builder: (joinBuilder,
+                    {$addJoinBuilderToRootComposer,
+                    $removeJoinBuilderFromRootComposer}) =>
+                $$StopwatchSessionsTableAnnotationComposer(
+                  $db: $db,
+                  $table: $db.stopwatchSessions,
+                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                  joinBuilder: joinBuilder,
+                  $removeJoinBuilderFromRootComposer:
+                      $removeJoinBuilderFromRootComposer,
+                ));
+    return composer;
+  }
 }
 
 class $$StopwatchLapsTableTableManager extends RootTableManager<
@@ -4110,12 +5069,9 @@ class $$StopwatchLapsTableTableManager extends RootTableManager<
     $$StopwatchLapsTableAnnotationComposer,
     $$StopwatchLapsTableCreateCompanionBuilder,
     $$StopwatchLapsTableUpdateCompanionBuilder,
-    (
-      StopwatchLap,
-      BaseReferences<_$AppDatabase, $StopwatchLapsTable, StopwatchLap>
-    ),
+    (StopwatchLap, $$StopwatchLapsTableReferences),
     StopwatchLap,
-    PrefetchHooks Function()> {
+    PrefetchHooks Function({bool sessionId})> {
   $$StopwatchLapsTableTableManager(_$AppDatabase db, $StopwatchLapsTable table)
       : super(TableManagerState(
           db: db,
@@ -4163,9 +5119,46 @@ class $$StopwatchLapsTableTableManager extends RootTableManager<
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$StopwatchLapsTable, StopwatchLap>(table),
+                    $$StopwatchLapsTableReferences(db, table, e)
+                  ))
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (sessionId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.sessionId,
+                    referencedTable:
+                        $$StopwatchLapsTableReferences._sessionIdTable(db),
+                    referencedColumn:
+                        $$StopwatchLapsTableReferences._sessionIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
@@ -4178,12 +5171,9 @@ typedef $$StopwatchLapsTableProcessedTableManager = ProcessedTableManager<
     $$StopwatchLapsTableAnnotationComposer,
     $$StopwatchLapsTableCreateCompanionBuilder,
     $$StopwatchLapsTableUpdateCompanionBuilder,
-    (
-      StopwatchLap,
-      BaseReferences<_$AppDatabase, $StopwatchLapsTable, StopwatchLap>
-    ),
+    (StopwatchLap, $$StopwatchLapsTableReferences),
     StopwatchLap,
-    PrefetchHooks Function()>;
+    PrefetchHooks Function({bool sessionId})>;
 typedef $$AppSettingsTableTableCreateCompanionBuilder
     = AppSettingsTableCompanion Function({
   Value<int> id,
@@ -4356,7 +5346,12 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             defaultSnoozeDurationSeconds: defaultSnoozeDurationSeconds,
           ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map((e) => (
+                    e.readTable<$AppSettingsTableTable, AppSettingsTableData>(
+                        table),
+                    BaseReferences<_$AppDatabase, $AppSettingsTableTable,
+                        AppSettingsTableData>(db, table, e)
+                  ))
               .toList(),
           prefetchHooksCallback: null,
         ));

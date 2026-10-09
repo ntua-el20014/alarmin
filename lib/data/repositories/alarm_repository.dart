@@ -10,22 +10,30 @@ class AlarmRepository {
   final AppDatabase _database;
 
   Stream<List<AlarmModel>> watchAlarms() {
-    final query = _database.select(_database.alarms)
+    return _orderedAlarms().watch().asyncMap(_withWeekdays);
+  }
+
+  Future<List<AlarmModel>> getAll() async {
+    return _withWeekdays(await _orderedAlarms().get());
+  }
+
+  SimpleSelectStatement<$AlarmsTable, Alarm> _orderedAlarms() {
+    return _database.select(_database.alarms)
       ..orderBy([
         (alarm) => OrderingTerm(expression: alarm.nextOccurrenceAt),
       ]);
+  }
 
-    return query.watch().asyncMap((rows) async {
-      final alarms = <AlarmModel>[];
-      for (final row in rows) {
-        final weekdays = await (_database.select(_database.alarmWeekdays)
-              ..where((weekday) => weekday.alarmId.equals(row.id)))
-            .get();
-        alarms.add(
-            _toModel(row, weekdays.map((weekday) => weekday.weekday).toSet()));
-      }
-      return alarms;
-    });
+  Future<List<AlarmModel>> _withWeekdays(List<Alarm> rows) async {
+    final weekdayRows = await _database.select(_database.alarmWeekdays).get();
+    final weekdaysByAlarm = <String, Set<int>>{};
+    for (final row in weekdayRows) {
+      weekdaysByAlarm.putIfAbsent(row.alarmId, () => <int>{}).add(row.weekday);
+    }
+    return [
+      for (final row in rows)
+        _toModel(row, weekdaysByAlarm[row.id] ?? const <int>{}),
+    ];
   }
 
   Future<AlarmModel?> findById(String alarmId) async {
@@ -41,10 +49,11 @@ class AlarmRepository {
 
   Future<void> save(AlarmModel alarm) {
     return _database.transaction(() async {
-      await _database.into(_database.alarms).insert(
-            _toCompanion(alarm),
-            mode: InsertMode.insertOrReplace,
-          );
+      // An upsert, not insertOrReplace: REPLACE deletes the row first, which
+      // would cascade-delete the alarm's reincarnation runs.
+      await _database
+          .into(_database.alarms)
+          .insertOnConflictUpdate(_toCompanion(alarm));
       await (_database.delete(_database.alarmWeekdays)
             ..where((weekday) => weekday.alarmId.equals(alarm.id)))
           .go();

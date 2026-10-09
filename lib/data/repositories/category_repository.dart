@@ -16,7 +16,9 @@ class CategoryRepository {
   }
 
   Future<void> save(CategoryModel category) {
-    return _database.into(_database.categories).insert(
+    // An upsert, not insertOrReplace: REPLACE deletes the row first, which
+    // would clear the categoryId of every alarm in the category.
+    return _database.into(_database.categories).insertOnConflictUpdate(
           CategoriesCompanion.insert(
             id: category.id,
             name: category.name,
@@ -24,7 +26,6 @@ class CategoryRepository {
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
           ),
-          mode: InsertMode.insertOrReplace,
         );
   }
 

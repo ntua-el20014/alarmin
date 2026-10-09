@@ -95,7 +95,9 @@ Keep configuration on the alarm, but keep an active firing chain separate from t
 - `nextFireAt`
 - `status`: `active`, `completed`, `cancelled`
 
-This prevents a snooze from corrupting the recurring alarm definition. The runtime chain is created only when the first snooze action occurs, and its trigger rule is fixed rather than configurable. Every scheduled native alarm must have an app-owned identifier so cancellation and rescheduling are deterministic.
+This prevents a snooze from corrupting the recurring alarm definition.
+
+Implemented policy: the first snooze schedules the whole chain natively at once, firing at `firstFireAt + k * reincarnationInterval` for `k = 0..reincarnationCount` (`firstFireAt` = snooze time + `snoozeDuration`). Snoozing a ring that is part of the chain only silences it, because the next firing is already scheduled; Dismiss ends the chain. Scheduling the chain up front keeps it working while the app is killed. `reincarnationCount` is capped at 10, because every firing owns its own native id. The runtime chain is created only when the first snooze action occurs, and its trigger rule is fixed rather than configurable. Every scheduled native alarm must have an app-owned identifier so cancellation and rescheduling are deterministic.
 
 ### Category
 
@@ -174,11 +176,11 @@ A settings repository should expose typed values, so screens do not depend on ra
 
 For the first version, use **Drift**. The project needs relational constraints, migrations, and reliable joins between alarms, categories, recurrence data, and stopwatch history. Drift also keeps the persistence contract explicit while the UI and provider layers are developed incrementally.
 
-Drift compatibility has been verified against Flutter 3.47.5 and Dart 3.13.4, and the initial schema is implemented. The alarm scheduler remains a separate concern regardless of database choice.
+Drift compatibility has been verified against Flutter 3.47.5 and Dart 3.13.4. Use `drift_dev` 2.35 or newer: older versions bundle an analyzer that cannot parse Dart 3.13 and silently drop every `references(...)` foreign key from the generated schema. Schema v2 restores the foreign keys (rebuilding v1 tables) and adds the reincarnation chain columns. The alarm scheduler remains a separate concern regardless of database choice.
 
 ### Packages to defer until needed
 
-- `permission_handler` only if platform permission flows cannot be handled by `alarm`.
+- ~~`permission_handler` only if platform permission flows cannot be handled by `alarm`.~~ Added: `alarm` 4.x never requests the Android 13+ notification permission. iOS requests still need the `PERMISSION_NOTIFICATIONS=1` Podfile macro before they can be enabled.
 - `timezone` if the scheduler must explicitly calculate across timezones or daylight-saving transitions.
 - `audio_session` or a dedicated audio package only if `alarm` cannot provide the required ringtone behavior.
 - `freezed` and `json_serializable` if immutable models, unions, or serialization volume justify code generation.
@@ -207,7 +209,7 @@ Milestones:
 1. [x] Alarm/category models and repositories.
 2. [x] Alarm list and grouped list.
 3. [x] Add/edit form and recurrence editor.
-4. Scheduler adapter and enable/disable synchronization.
+4. [x] Scheduler adapter and enable/disable synchronization.
 5. [x] Ringing, snooze, reincarnation, and delete-after-use service flow.
 
 ### Screen 2: Calendar
@@ -318,9 +320,17 @@ Milestones:
 - Snooze and reincarnation schedule the expected next firing.
 - App restart resets active timer and stopwatch state while preserving saved alarm and completed stopwatch history.
 
+### Native alarm ids and reliability
+
+Each alarm owns a fixed group of native ids: a primary id for the next occurrence, a follow-up id for the occurrence after it, and one id per reincarnation. The follow-up keeps a recurring alarm ringing tomorrow even when today's ring was stopped from the notification while the app was killed and could not reschedule. `AlarmService` serializes every scheduling change in one queue. Recovery (on startup and resume) never touches an alarm that is ringing or due within the last minute. A notification Stop (the plugin's update event) reschedules a recurring alarm or completes a one-time alarm.
+
+Ringtones are bundled under `assets/audio/` and referenced by id (`classic`, `gentle`, `digital`). Unknown legacy values resolve to `classic`.
+
 ## 6. Open Risks
 
-- Background alarm behavior, exact ringtone control, and permissions vary by Android and iOS versions; validate the `alarm` package on real devices early.
+- Background alarm behavior, exact ringtone control, and permissions vary by Android and iOS versions; validate the `alarm` package on real devices early. Settings > Alarm reliability shows the permission status and can ring a test alarm.
+- `alarm` 4.1.1 is pinned. 5.x changes the API (`volumeSettings`, `Alarm.ringing`); upgrade only behind the `AlarmScheduler` boundary.
+- On iOS, alarms only ring while the app is alive in the background (plugin limitation).
 - Recurrence calculations become incorrect if the model stores only a timestamp. Keep the recurrence rule and the next computed occurrence separate.
 - Local-time recurrence must define behavior around daylight-saving gaps and repeated clock times; cover those cases in domain tests.
 - Storing the emoji itself is fine for user-selected Unicode emoji, but category identity should remain a stable id so renaming a category does not require rewriting alarms.

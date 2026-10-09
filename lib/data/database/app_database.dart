@@ -58,6 +58,11 @@ class ReincarnationRuns extends Table {
   IntColumn get remainingCount => integer()();
   DateTimeColumn get nextFireAt => dateTime()();
   IntColumn get status => integer()();
+  // Added in schema v2. A chain fires at firstFireAt + k * interval for
+  // k = 0..reincarnationCount. Null on legacy rows, which are treated as done.
+  DateTimeColumn get firstFireAt => dateTime().nullable()();
+  IntColumn get chainReincarnationCount => integer().nullable()();
+  IntColumn get chainIntervalSeconds => integer().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -116,7 +121,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -125,7 +130,46 @@ class AppDatabase extends _$AppDatabase {
           await _seedDefaults();
         },
         onUpgrade: (migrator, from, to) async {
-          // Add future schema changes here as versioned migrations.
+          if (from < 2) {
+            // v1 tables were generated without their foreign keys (drift_dev
+            // could not resolve the referenced classes), so rows were left
+            // behind by deletes. Drop the orphans, then rebuild the tables
+            // with their constraints. Foreign keys are still off here.
+            await customStatement(
+              'DELETE FROM alarm_weekdays '
+              'WHERE alarm_id NOT IN (SELECT id FROM alarms)',
+            );
+            await customStatement(
+              'DELETE FROM reincarnation_runs '
+              'WHERE alarm_id NOT IN (SELECT id FROM alarms)',
+            );
+            await customStatement(
+              'DELETE FROM stopwatch_laps '
+              'WHERE session_id NOT IN (SELECT id FROM stopwatch_sessions)',
+            );
+            await customStatement(
+              'UPDATE alarms SET category_id = NULL '
+              'WHERE category_id NOT IN (SELECT id FROM categories)',
+            );
+            await migrator.alterTable(TableMigration(alarms));
+            await migrator.alterTable(TableMigration(alarmWeekdays));
+            await migrator.alterTable(
+              TableMigration(
+                reincarnationRuns,
+                newColumns: [
+                  reincarnationRuns.firstFireAt,
+                  reincarnationRuns.chainReincarnationCount,
+                  reincarnationRuns.chainIntervalSeconds,
+                ],
+              ),
+            );
+            await migrator.alterTable(TableMigration(stopwatchLaps));
+          }
+        },
+        beforeOpen: (details) async {
+          // SQLite ignores the declared cascade/set-null actions unless
+          // foreign keys are enabled on every connection.
+          await customStatement('PRAGMA foreign_keys = ON');
         },
       );
 
@@ -161,7 +205,7 @@ class AppDatabase extends _$AppDatabase {
         id: Value(1),
         timePickerStyle: Value(0),
         isGroupedView: Value(false),
-        defaultRingtone: Value('default'),
+        defaultRingtone: Value('classic'),
         defaultVibration: Value(1),
         defaultSnoozeDurationSeconds: Value(600),
       ),

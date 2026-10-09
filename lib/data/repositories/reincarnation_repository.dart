@@ -9,18 +9,22 @@ class ReincarnationRepository {
   final AppDatabase _database;
 
   Future<ReincarnationRunModel?> findActive(String alarmId) async {
-    final row = await (_database.select(_database.reincarnationRuns)
+    final rows = await (_database.select(_database.reincarnationRuns)
           ..where(
             (run) =>
                 run.alarmId.equals(alarmId) &
                 run.status.equals(ReincarnationStatus.active.index),
           ))
-        .getSingleOrNull();
-    return row == null ? null : _toModel(row);
+        .get();
+    for (final row in rows) {
+      final run = _toModel(row);
+      if (run != null) return run;
+    }
+    return null;
   }
 
   Future<void> save(ReincarnationRunModel run) {
-    return _database.into(_database.reincarnationRuns).insert(
+    return _database.into(_database.reincarnationRuns).insertOnConflictUpdate(
           ReincarnationRunsCompanion.insert(
             id: run.id,
             alarmId: run.alarmId,
@@ -28,8 +32,10 @@ class ReincarnationRepository {
             remainingCount: run.remainingCount,
             nextFireAt: run.nextFireAt,
             status: run.status.index,
+            firstFireAt: Value(run.firstFireAt),
+            chainReincarnationCount: Value(run.reincarnationCount),
+            chainIntervalSeconds: Value(run.interval.inSeconds),
           ),
-          mode: InsertMode.insertOrReplace,
         );
   }
 
@@ -47,7 +53,15 @@ class ReincarnationRepository {
     );
   }
 
-  ReincarnationRunModel _toModel(ReincarnationRun row) {
+  /// Returns null for legacy (schema v1) rows that lack chain timing; those
+  /// chains were never fully scheduled and are ignored.
+  ReincarnationRunModel? _toModel(ReincarnationRun row) {
+    final firstFireAt = row.firstFireAt;
+    final count = row.chainReincarnationCount;
+    final intervalSeconds = row.chainIntervalSeconds;
+    if (firstFireAt == null || count == null || intervalSeconds == null) {
+      return null;
+    }
     return ReincarnationRunModel(
       id: row.id,
       alarmId: row.alarmId,
@@ -55,6 +69,9 @@ class ReincarnationRepository {
       remainingCount: row.remainingCount,
       nextFireAt: row.nextFireAt,
       status: ReincarnationStatus.values[row.status],
+      firstFireAt: firstFireAt,
+      reincarnationCount: count,
+      interval: Duration(seconds: intervalSeconds),
     );
   }
 }

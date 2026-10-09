@@ -6,9 +6,11 @@ import 'package:alarmin/data/models/alarm_model.dart';
 import 'package:alarmin/data/models/app_settings.dart';
 import 'package:alarmin/data/models/category_model.dart';
 import 'package:alarmin/data/models/recurrence_rule.dart';
+import 'package:alarmin/data/models/reincarnation_model.dart';
 import 'package:alarmin/data/models/stopwatch_models.dart';
 import 'package:alarmin/data/repositories/alarm_repository.dart';
 import 'package:alarmin/data/repositories/category_repository.dart';
+import 'package:alarmin/data/repositories/reincarnation_repository.dart';
 import 'package:alarmin/data/repositories/settings_repository.dart';
 import 'package:alarmin/data/repositories/stopwatch_repository.dart';
 
@@ -45,6 +47,15 @@ void main() {
 
   test('saves and reloads an alarm with normalized weekdays', () async {
     final repository = AlarmRepository(database);
+    await CategoryRepository(database).save(
+      CategoryModel(
+        id: 'work',
+        name: 'Work',
+        emoji: '💼',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
     final alarm = _alarm(categoryId: 'work');
 
     await repository.save(alarm);
@@ -77,6 +88,66 @@ void main() {
     expect(loaded.single.categoryId, isNull);
     final categories = await categoryRepository.watchCategories().first;
     expect(categories.map((category) => category.id), isNot(contains('work')));
+  });
+
+  test('editing a category keeps its alarms in it', () async {
+    final categoryRepository = CategoryRepository(database);
+    final alarmRepository = AlarmRepository(database);
+    final category = CategoryModel(
+      id: 'work',
+      name: 'Work',
+      emoji: '💼',
+      createdAt: now,
+      updatedAt: now,
+    );
+    await categoryRepository.save(category);
+    await alarmRepository.save(_alarm(categoryId: category.id));
+
+    await categoryRepository.save(
+      CategoryModel(
+        id: category.id,
+        name: 'Office',
+        emoji: '🏢',
+        createdAt: category.createdAt,
+        updatedAt: now,
+      ),
+    );
+
+    expect((await alarmRepository.findById('alarm-1'))?.categoryId, 'work');
+  });
+
+  test('re-saving an alarm keeps its active snooze chain', () async {
+    final alarmRepository = AlarmRepository(database);
+    final reincarnationRepository = ReincarnationRepository(database);
+    final alarm = _alarm();
+    await alarmRepository.save(alarm);
+    await reincarnationRepository.save(
+      ReincarnationRunModel(
+        id: 'run-1',
+        alarmId: alarm.id,
+        originOccurrenceAt: now,
+        remainingCount: 2,
+        nextFireAt: now,
+        status: ReincarnationStatus.active,
+        firstFireAt: now,
+        reincarnationCount: 2,
+        interval: const Duration(minutes: 5),
+      ),
+    );
+
+    await alarmRepository.save(alarm.copyWith(title: 'Renamed'));
+
+    expect(await reincarnationRepository.findActive(alarm.id), isNotNull);
+  });
+
+  test('deleting an alarm deletes its weekdays and snooze chains', () async {
+    final alarmRepository = AlarmRepository(database);
+    final alarm = _alarm();
+    await alarmRepository.save(alarm);
+
+    await alarmRepository.delete(alarm.id);
+
+    expect(await database.select(database.alarmWeekdays).get(), isEmpty);
   });
 
   test('persists settings and completed stopwatch history', () async {

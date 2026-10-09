@@ -1,26 +1,32 @@
-import 'dart:async';
-
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alarmin/data/database/app_database.dart' as db;
 import 'package:alarmin/data/models/alarm_model.dart';
 import 'package:alarmin/data/models/recurrence_rule.dart';
+import 'package:alarmin/data/models/ringtone.dart';
 import 'package:alarmin/data/repositories/alarm_repository.dart';
+import 'package:alarmin/data/repositories/reincarnation_repository.dart';
 import 'package:alarmin/data/services/alarm_scheduler.dart';
 import 'package:alarmin/data/services/alarm_service.dart';
+
+import 'support/fake_alarm_scheduler.dart';
 
 void main() {
   late db.AppDatabase database;
   late FakeAlarmScheduler scheduler;
+  late AlarmRepository repository;
   late AlarmService service;
-  final now = DateTime(2026, 9, 21, 6);
+  late DateTime now;
 
   setUp(() {
+    now = DateTime(2026, 9, 21, 6);
     database = db.AppDatabase(NativeDatabase.memory());
     scheduler = FakeAlarmScheduler();
+    repository = AlarmRepository(database);
     service = AlarmService(
-      repository: AlarmRepository(database),
+      repository: repository,
+      reincarnationRepository: ReincarnationRepository(database),
       scheduler: scheduler,
       now: () => now,
     );
@@ -28,67 +34,142 @@ void main() {
 
   tearDown(() async {
     await database.close();
+    await scheduler.close();
   });
 
-  test('saves and schedules the next recurrence', () async {
+  test('saves and schedules the next two occurrences of a recurrence',
+      () async {
     final alarm = _alarm();
 
     await service.save(alarm);
 
-    expect(scheduler.scheduled, hasLength(1));
-    expect(scheduler.scheduled.single.$1.id, alarm.id);
-    expect(scheduler.scheduled.single.$2, DateTime(2026, 9, 21, 7));
-    expect(
-        (await AlarmRepository(database).watchAlarms().first)
-            .single
-            .nextOccurrenceAt,
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
+        DateTime(2026, 9, 21, 7));
+    expect(scheduler.active[followUpNativeId(alarm.id)]?.dateTime,
+        DateTime(2026, 9, 22, 7));
+    expect((await repository.findById(alarm.id))?.nextOccurrenceAt,
         DateTime(2026, 9, 21, 7));
   });
 
-  test('disabling an alarm cancels native scheduling', () async {
+  test('schedules a bundled ringtone even for legacy ringtone values',
+      () async {
+    await service.save(_alarm(ringtone: 'assets/audio/default.mp3'));
+
+    final request = scheduler.scheduled.first;
+    expect(Ringtone.resolve(request.ringtone), Ringtone.fallback);
+  });
+
+  test('disabling an alarm cancels its native alarms', () async {
     final alarm = _alarm();
     await service.save(alarm);
 
     await service.setEnabled(alarm, false);
 
-    expect(scheduler.cancelled, contains(alarm.id));
-    expect(scheduler.scheduled, hasLength(1));
-    expect(
-        (await AlarmRepository(database).watchAlarms().first).single.isEnabled,
-        isFalse);
+    expect(scheduler.active, isEmpty);
+    expect((await repository.findById(alarm.id))?.isEnabled, isFalse);
   });
 
-  test('recovers enabled alarms from the database', () async {
+  test('recovers enabled alarms missing from the native schedule', () async {
     await service.save(_alarm());
-    scheduler.scheduled.clear();
+    scheduler.active.clear();
+
+    await service.recover();
+
+    expect(scheduler.active[primaryNativeId('alarm-1')]?.dateTime,
+        DateTime(2026, 9, 21, 7));
+  });
+
+  test('recovery never stops an alarm that is ringing', () async {
+    final alarm = _alarm();
+    await service.save(alarm);
+    now = DateTime(2026, 9, 21, 7, 0, 30);
+    scheduler.ring(primaryNativeId(alarm.id));
     scheduler.cancelled.clear();
 
     await service.recover();
 
-    expect(scheduler.cancelled, contains('alarm-1'));
-    expect(scheduler.scheduled, hasLength(1));
-    expect(scheduler.scheduled.single.$2, DateTime(2026, 9, 21, 7));
+    expect(scheduler.cancelled, isEmpty);
+    expect(await scheduler.isRinging(primaryNativeId(alarm.id)), isTrue);
+  });
+
+  test('recovery leaves an alarm that is due this moment alone', () async {
+    final alarm = _alarm();
+    await service.save(alarm);
+    now = DateTime(2026, 9, 21, 7, 0, 10);
+    scheduler.cancelled.clear();
+
+    await service.recover();
+
+    expect(scheduler.cancelled, isEmpty);
+  });
+
+  test('stopping a recurring alarm from its notification reschedules it',
+      () async {
+    final alarm = _alarm();
+    await service.save(alarm);
+    now = DateTime(2026, 9, 21, 7, 2);
+    scheduler.ring(primaryNativeId(alarm.id));
+
+    scheduler.stopFromNotification(primaryNativeId(alarm.id));
+    await service.handleNativeUpdate(primaryNativeId(alarm.id));
+
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
+        DateTime(2026, 9, 22, 7));
+    expect((await repository.findById(alarm.id))?.nextOccurrenceAt,
+        DateTime(2026, 9, 22, 7));
+  });
+
+  test('stopping a one-time alarm from its notification disables it', () async {
+    final alarm = _alarm(once: true);
+    await service.save(alarm);
+    now = DateTime(2026, 9, 21, 7, 2);
+    scheduler.ring(primaryNativeId(alarm.id));
+
+    scheduler.stopFromNotification(primaryNativeId(alarm.id));
+    await service.handleNativeUpdate(primaryNativeId(alarm.id));
+
+    final saved = await repository.findById(alarm.id);
+    expect(saved?.isEnabled, isFalse);
+    expect(saved?.nextOccurrenceAt, isNull);
+  });
+
+  test('update events for a future alarm do not reschedule it', () async {
+    final alarm = _alarm();
+    await service.save(alarm);
+    final scheduledCount = scheduler.scheduled.length;
+
+    await service.handleNativeUpdate(primaryNativeId(alarm.id));
+
+    expect(scheduler.scheduled, hasLength(scheduledCount));
   });
 
   test('maps a stable valid native id from a domain id', () {
     expect(nativeAlarmId('alarm-1'), nativeAlarmId('alarm-1'));
     expect(nativeAlarmId('alarm-1'), isNot(0));
     expect(nativeAlarmId('alarm-1'), isNot(-1));
+    expect(nativeIdsFor('alarm-1'), hasLength(maxReincarnationCount + 3));
+    expect(nativeIdsFor('alarm-1'), isNot(contains(timerNativeId)));
   });
 }
 
-AlarmModel _alarm() {
+AlarmModel _alarm({bool once = false, String ringtone = 'classic'}) {
   final createdAt = DateTime(2026, 9, 20);
   return AlarmModel(
     id: 'alarm-1',
     title: 'Morning alarm',
-    recurrence: const RecurrenceRule(
-      scheduleType: AlarmScheduleType.daily,
-      timeOfDay: 7 * 60,
-    ),
+    recurrence: once
+        ? RecurrenceRule(
+            scheduleType: AlarmScheduleType.once,
+            timeOfDay: 7 * 60,
+            scheduledDate: DateTime(2026, 9, 21),
+          )
+        : const RecurrenceRule(
+            scheduleType: AlarmScheduleType.daily,
+            timeOfDay: 7 * 60,
+          ),
     isEnabled: true,
     deleteAfterUse: false,
-    ringtone: 'assets/audio/default.mp3',
+    ringtone: ringtone,
     vibration: VibrationSetting.standard,
     snoozeDuration: const Duration(minutes: 10),
     reincarnationCount: 2,
@@ -96,31 +177,4 @@ AlarmModel _alarm() {
     createdAt: createdAt,
     updatedAt: createdAt,
   );
-}
-
-class FakeAlarmScheduler implements AlarmScheduler {
-  final scheduled = <(AlarmModel, DateTime)>[];
-  final cancelled = <String>[];
-  final ringEventsController = StreamController<int>.broadcast();
-
-  @override
-  bool get isSupported => true;
-
-  @override
-  Stream<int> get ringEvents => ringEventsController.stream;
-
-  @override
-  Future<void> initialize() async {}
-
-  @override
-  Future<bool> schedule(AlarmModel alarm, DateTime occurrence) async {
-    scheduled.add((alarm, occurrence));
-    return true;
-  }
-
-  @override
-  Future<bool> cancel(String alarmId) async {
-    cancelled.add(alarmId);
-    return true;
-  }
 }

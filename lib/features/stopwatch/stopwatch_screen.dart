@@ -43,11 +43,16 @@ class StopwatchScreen extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             TextButton.icon(
-              onPressed: hasSession ? controller.finish : null,
+              onPressed: hasSession ? () => _finish(context, ref) : null,
               icon: const Icon(Icons.save),
               label: const Text('Finish'),
             ),
           ],
+        ),
+        TextButton.icon(
+          onPressed: hasSession ? controller.reset : null,
+          icon: const Icon(Icons.restart_alt),
+          label: const Text('Reset without saving'),
         ),
         Expanded(
           child: state.laps.isEmpty
@@ -72,6 +77,20 @@ class StopwatchScreen extends ConsumerWidget {
         const SizedBox(height: 12),
       ],
     );
+  }
+
+  Future<void> _finish(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(stopwatchControllerProvider.notifier).finish();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Session saved to history')),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not save the session: $error')),
+      );
+    }
   }
 
   Future<void> _showHistory(BuildContext context) {
@@ -106,31 +125,77 @@ class _StopwatchHistorySheet extends ConsumerWidget {
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * 0.7,
         child: history.when(
-          data: (sessions) => sessions.isEmpty
-              ? const Center(child: Text('No saved sessions'))
-              : ListView.builder(
-                  itemCount: sessions.length,
-                  itemBuilder: (context, index) {
-                    final session = sessions[index];
-                    return ListTile(
-                      title: Text(_formatSession(session.totalTimeMs)),
-                      subtitle: Text(session.startedAt.toLocal().toString()),
-                      onTap: () => _showSession(context, ref, session),
-                      trailing: IconButton(
-                        tooltip: 'Delete session',
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: () => ref
-                            .read(stopwatchRepositoryProvider)
-                            .deleteSession(session.id),
-                      ),
-                    );
-                  },
+          data: (sessions) => Column(
+            children: [
+              ListTile(
+                title: Text(
+                  'History',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
+                trailing: TextButton.icon(
+                  onPressed: sessions.isEmpty
+                      ? null
+                      : () => _confirmClear(context, ref),
+                  icon: const Icon(Icons.delete_sweep_outlined),
+                  label: const Text('Clear'),
+                ),
+              ),
+              Expanded(
+                child: sessions.isEmpty
+                    ? const Center(child: Text('No saved sessions'))
+                    : ListView.builder(
+                        itemCount: sessions.length,
+                        itemBuilder: (context, index) {
+                          final session = sessions[index];
+                          return ListTile(
+                            title: Text(_formatSession(session.totalTimeMs)),
+                            subtitle: Text(
+                              '${MaterialLocalizations.of(context).formatMediumDate(session.startedAt)}'
+                              ' · '
+                              '${TimeOfDay.fromDateTime(session.startedAt).format(context)}',
+                            ),
+                            onTap: () => _showSession(context, ref, session),
+                            trailing: IconButton(
+                              tooltip: 'Delete session',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => ref
+                                  .read(stopwatchRepositoryProvider)
+                                  .deleteSession(session.id),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => Center(child: Text('Error: $error')),
         ),
       ),
     );
+  }
+
+  Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear stopwatch history?'),
+        content: const Text('All saved sessions and laps will be deleted.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(stopwatchRepositoryProvider).clearHistory();
+    }
   }
 
   Future<void> _showSession(
@@ -170,6 +235,13 @@ class _StopwatchHistorySheet extends ConsumerWidget {
 
   String _formatSession(int milliseconds) {
     final duration = Duration(milliseconds: milliseconds);
-    return '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    final hundredths =
+        (duration.inMilliseconds % 1000 ~/ 10).toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    return hours > 0
+        ? '$hours:$minutes:$seconds.$hundredths'
+        : '$minutes:$seconds.$hundredths';
   }
 }

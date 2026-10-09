@@ -1,127 +1,98 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../models/alarm_model.dart';
-import '../models/reincarnation_model.dart';
-import '../models/recurrence_rule.dart';
-import '../repositories/alarm_repository.dart';
-import '../repositories/reincarnation_repository.dart';
+import '../models/ringing_alarm.dart';
 import 'alarm_scheduler.dart';
 import 'alarm_service.dart';
 
+/// Bridges native alarm events to [AlarmService] and publishes the alarm
+/// that is currently ringing, which drives the ring screen.
 class AlarmRingHandler {
   AlarmRingHandler({
-    required AlarmRepository alarmRepository,
-    required ReincarnationRepository reincarnationRepository,
     required AlarmService alarmService,
     required AlarmScheduler scheduler,
-    DateTime Function()? now,
-  })  : _alarmRepository = alarmRepository,
-        _reincarnationRepository = reincarnationRepository,
-        _alarmService = alarmService,
+    required ValueNotifier<RingingAlarm?> ringing,
+  })  : _alarmService = alarmService,
         _scheduler = scheduler,
-        _now = now ?? DateTime.now;
+        _ringing = ringing;
 
-  final AlarmRepository _alarmRepository;
-  final ReincarnationRepository _reincarnationRepository;
   final AlarmService _alarmService;
   final AlarmScheduler _scheduler;
-  final DateTime Function() _now;
+  final ValueNotifier<RingingAlarm?> _ringing;
 
-  StreamSubscription<int>? _subscription;
+  StreamSubscription<int>? _ringSubscription;
+  StreamSubscription<int>? _updateSubscription;
 
   void start() {
-    _subscription ??= _scheduler.ringEvents.listen(handleNativeRing);
+    _ringSubscription ??= _scheduler.ringEvents
+        .listen((nativeId) => _guard(() => handleNativeRing(nativeId)));
+    _updateSubscription ??= _scheduler.updateEvents
+        .listen((nativeId) => _guard(() => _handleNativeUpdate(nativeId)));
   }
 
   Future<void> dispose() async {
-    await _subscription?.cancel();
-    _subscription = null;
+    await _ringSubscription?.cancel();
+    await _updateSubscription?.cancel();
+    _ringSubscription = null;
+    _updateSubscription = null;
   }
 
-  Future<void> handleNativeRing(int nativeId) async {
-    final alarm = await _findByNativeId(nativeId);
-    if (alarm == null) return;
-    final activeRun = await _reincarnationRepository.findActive(alarm.id);
-    if (activeRun != null) {
-      await _advanceReincarnation(alarm, activeRun);
+  Future<RingingAlarm> handleNativeRing(int nativeId) async {
+    final ringing = await _alarmService.handleRing(nativeId) ??
+        RingingAlarm.standalone(nativeId);
+    _ringing.value = ringing;
+    return ringing;
+  }
+
+  Future<void> snooze(AlarmModel alarm, {int? nativeId}) async {
+    try {
+      await _alarmService.snooze(alarm, ringingNativeId: nativeId);
+    } finally {
+      _clearIfAlarm(alarm.id);
     }
-  }
-
-  Future<void> snooze(AlarmModel alarm) async {
-    final now = _now();
-    final activeRun = await _reincarnationRepository.findActive(alarm.id);
-    if (activeRun != null) return;
-
-    await _scheduler.cancel(alarm.id);
-    final nextFireAt = now.add(alarm.snoozeDuration);
-    final run = ReincarnationRunModel(
-      id: 'reincarnation-${alarm.id}',
-      alarmId: alarm.id,
-      originOccurrenceAt: alarm.nextOccurrenceAt ?? now,
-      remainingCount: alarm.reincarnationCount,
-      nextFireAt: nextFireAt,
-      status: ReincarnationStatus.active,
-    );
-    await _reincarnationRepository.save(run);
-    await _scheduler.schedule(alarm, nextFireAt);
   }
 
   Future<void> dismiss(AlarmModel alarm) async {
-    await _scheduler.cancel(alarm.id);
-    await _reincarnationRepository.cancelForAlarm(alarm.id);
-
-    if (alarm.recurrence.scheduleType == AlarmScheduleType.once) {
-      if (alarm.deleteAfterUse) {
-        await _alarmService.delete(alarm);
-      } else {
-        await _alarmService.setEnabled(alarm, false);
-      }
-      return;
+    try {
+      await _alarmService.dismiss(alarm);
+    } finally {
+      _clearIfAlarm(alarm.id);
     }
-
-    await _alarmService.reschedule(alarm);
   }
 
-  Future<void> _advanceReincarnation(
-    AlarmModel alarm,
-    ReincarnationRunModel run,
-  ) async {
-    await _scheduler.cancel(alarm.id);
-    if (run.remainingCount <= 0) {
-      await _reincarnationRepository.save(
-        ReincarnationRunModel(
-          id: run.id,
-          alarmId: run.alarmId,
-          originOccurrenceAt: run.originOccurrenceAt,
-          remainingCount: 0,
-          nextFireAt: run.nextFireAt,
-          status: ReincarnationStatus.completed,
-        ),
-      );
-      return;
+  /// Stops [ringing], dismissing it when it belongs to a saved alarm.
+  Future<void> stop(RingingAlarm ringing) async {
+    final alarm = ringing.alarm;
+    if (alarm != null) return dismiss(alarm);
+    try {
+      await _scheduler.cancel(ringing.nativeId);
+    } finally {
+      if (_ringing.value?.nativeId == ringing.nativeId) _ringing.value = null;
     }
-
-    final nextFireAt = _now().add(alarm.reincarnationInterval);
-    await _reincarnationRepository.save(
-      ReincarnationRunModel(
-        id: run.id,
-        alarmId: run.alarmId,
-        originOccurrenceAt: run.originOccurrenceAt,
-        remainingCount: run.remainingCount - 1,
-        nextFireAt: nextFireAt,
-        status: ReincarnationStatus.active,
-      ),
-    );
-    await _scheduler.schedule(alarm, nextFireAt);
   }
 
-  Future<AlarmModel?> _findByNativeId(int nativeId) async {
-    await for (final alarms in _alarmRepository.watchAlarms()) {
-      for (final alarm in alarms) {
-        if (nativeAlarmId(alarm.id) == nativeId) return alarm;
-      }
-      return null;
+  Future<void> _handleNativeUpdate(int nativeId) async {
+    await _alarmService.handleNativeUpdate(nativeId);
+    // Stopped from the notification: close the ring screen as well.
+    final current = _ringing.value;
+    if (current != null &&
+        current.nativeId == nativeId &&
+        !await _scheduler.isRinging(nativeId)) {
+      _ringing.value = null;
     }
-    return null;
+  }
+
+  void _clearIfAlarm(String alarmId) {
+    if (_ringing.value?.alarm?.id == alarmId) _ringing.value = null;
+  }
+
+  Future<void> _guard(Future<void> Function() action) async {
+    try {
+      await action();
+    } catch (error, stackTrace) {
+      debugPrint('Alarm event handling failed: $error\n$stackTrace');
+    }
   }
 }

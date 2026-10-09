@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/ringtone.dart';
+import '../../data/services/alarm_scheduler.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -24,11 +27,10 @@ class SettingsScreen extends ConsumerWidget {
           error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
         ),
         const Divider(),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text('Categories',
-              style: Theme.of(context).textTheme.titleMedium),
-        ),
+        const _SectionTitle('Alarm reliability'),
+        const _ReliabilitySection(),
+        const Divider(),
+        const _SectionTitle('Categories'),
         categories.when(
           data: (items) => _CategorySection(categories: items),
           loading: () => const ListTile(title: Text('Loading categories...')),
@@ -39,18 +41,34 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    );
+  }
+}
+
 class _SettingsSection extends ConsumerWidget {
   const _SettingsSection({required this.settings});
+
+  static const _snoozeOptions = [1, 3, 5, 10, 15, 20, 30];
 
   final AppSettings settings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final snoozeMinutes = settings.defaultSnoozeDuration.inMinutes;
     return Column(
       children: [
         ListTile(
-          title: const Text('Time Picker'),
-          subtitle: Text(_timePickerLabel(settings.timePickerStyle)),
+          title: const Text('Time picker'),
           trailing: DropdownButton<TimePickerStyle>(
             value: settings.timePickerStyle,
             items: const [
@@ -77,6 +95,56 @@ class _SettingsSection extends ConsumerWidget {
           onChanged: (value) =>
               _save(ref, settings.copyWith(isGroupedView: value)),
         ),
+        ListTile(
+          title: const Text('Default ringtone'),
+          subtitle: const Text('Also used by the timer'),
+          trailing: DropdownButton<String>(
+            value: Ringtone.resolve(settings.defaultRingtone).id,
+            items: [
+              for (final ringtone in Ringtone.all)
+                DropdownMenuItem(
+                  value: ringtone.id,
+                  child: Text(ringtone.label),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                _save(ref, settings.copyWith(defaultRingtone: value));
+              }
+            },
+          ),
+        ),
+        SwitchListTile(
+          title: const Text('Vibrate by default'),
+          value: settings.defaultVibration != VibrationSetting.off,
+          onChanged: (value) => _save(
+            ref,
+            settings.copyWith(
+              defaultVibration:
+                  value ? VibrationSetting.standard : VibrationSetting.off,
+            ),
+          ),
+        ),
+        ListTile(
+          title: const Text('Default snooze'),
+          trailing: DropdownButton<int>(
+            value: _snoozeOptions.contains(snoozeMinutes) ? snoozeMinutes : 10,
+            items: [
+              for (final minutes in _snoozeOptions)
+                DropdownMenuItem(value: minutes, child: Text('$minutes min')),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                _save(
+                  ref,
+                  settings.copyWith(
+                    defaultSnoozeDuration: Duration(minutes: value),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
       ],
     );
   }
@@ -84,11 +152,115 @@ class _SettingsSection extends ConsumerWidget {
   Future<void> _save(WidgetRef ref, AppSettings value) {
     return ref.read(settingsRepositoryProvider).save(value);
   }
+}
 
-  String _timePickerLabel(TimePickerStyle style) {
-    return style == TimePickerStyle.materialClock
-        ? 'Material clock'
-        : 'Cupertino wheel';
+/// Permission status plus a test alarm, so a silent device can be diagnosed
+/// without waiting for a real alarm.
+class _ReliabilitySection extends ConsumerStatefulWidget {
+  const _ReliabilitySection();
+
+  @override
+  ConsumerState<_ReliabilitySection> createState() =>
+      _ReliabilitySectionState();
+}
+
+class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
+    with WidgetsBindingObserver {
+  Map<String, bool> _status = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back from the system settings page.
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final status = await ref.read(alarmPermissionsProvider).status();
+    if (mounted) setState(() => _status = status);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final permissions = ref.read(alarmPermissionsProvider);
+    final scheduler = ref.read(alarmSchedulerProvider);
+    return Column(
+      children: [
+        for (final entry in _status.entries)
+          ListTile(
+            leading: Icon(
+              entry.value ? Icons.check_circle : Icons.error_outline,
+              color: entry.value
+                  ? Colors.green
+                  : Theme.of(context).colorScheme.error,
+            ),
+            title: Text(entry.key),
+            subtitle: Text(entry.value ? 'Allowed' : 'Not allowed'),
+            onTap: entry.value
+                ? null
+                : () async {
+                    if (entry.key == 'Ignore battery optimization') {
+                      await permissions.requestBatteryOptimizationExemption();
+                    } else {
+                      await permissions.openSystemSettings();
+                    }
+                    await _refresh();
+                  },
+          ),
+        ListTile(
+          leading: const Icon(Icons.notifications_active_outlined),
+          title: const Text('Ring a test alarm'),
+          subtitle: Text(
+            scheduler.isSupported
+                ? 'Rings in 5 seconds; lock the screen to test'
+                : 'Alarms only ring on Android and iOS',
+          ),
+          enabled: scheduler.isSupported,
+          onTap: () => _ringTestAlarm(context),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _ringTestAlarm(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final ringtone = ref.read(settingsProvider).value?.defaultRingtone ??
+        Ringtone.fallbackId;
+    try {
+      final scheduled = await ref.read(alarmSchedulerProvider).schedule(
+            NativeAlarmRequest(
+              id: testAlarmNativeId,
+              dateTime: DateTime.now().add(const Duration(seconds: 5)),
+              title: 'Test alarm',
+              body: 'Alarmin can ring on this device.',
+              ringtone: ringtone,
+            ),
+          );
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            scheduled
+                ? 'Test alarm set for 5 seconds from now.'
+                : 'The system refused the test alarm.',
+          ),
+        ),
+      );
+    } catch (error) {
+      messenger
+          .showSnackBar(SnackBar(content: Text('Test alarm failed: $error')));
+    }
   }
 }
 
@@ -134,48 +306,17 @@ class _CategorySection extends ConsumerWidget {
     WidgetRef ref, [
     CategoryModel? category,
   ]) async {
-    final nameController = TextEditingController(text: category?.name ?? '');
-    final emojiController = TextEditingController(text: category?.emoji ?? '');
     final result = await showDialog<(String, String)>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(category == null ? 'Add category' : 'Edit category'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name')),
-            TextField(
-                controller: emojiController,
-                decoration: const InputDecoration(labelText: 'Emoji')),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(
-                context, (nameController.text, emojiController.text)),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+      builder: (context) => _CategoryDialog(category: category),
     );
-    nameController.dispose();
-    emojiController.dispose();
-    if (result == null ||
-        result.$1.trim().isEmpty ||
-        result.$2.trim().isEmpty) {
-      return;
-    }
+    if (result == null) return;
     final now = DateTime.now();
     await ref.read(categoryRepositoryProvider).save(
           CategoryModel(
             id: category?.id ?? 'category-${now.microsecondsSinceEpoch}',
-            name: result.$1.trim(),
-            emoji: result.$2.trim(),
+            name: result.$1,
+            emoji: result.$2,
             createdAt: category?.createdAt ?? now,
             updatedAt: now,
           ),
@@ -206,5 +347,67 @@ class _CategorySection extends ConsumerWidget {
     if (confirmed == true) {
       await ref.read(categoryRepositoryProvider).delete(category.id);
     }
+  }
+}
+
+/// Owns its text controllers so they are disposed only after the dialog's
+/// closing animation, not while its fields are still on screen.
+class _CategoryDialog extends StatefulWidget {
+  const _CategoryDialog({this.category});
+
+  final CategoryModel? category;
+
+  @override
+  State<_CategoryDialog> createState() => _CategoryDialogState();
+}
+
+class _CategoryDialogState extends State<_CategoryDialog> {
+  late final TextEditingController _name =
+      TextEditingController(text: widget.category?.name ?? '');
+  late final TextEditingController _emoji =
+      TextEditingController(text: widget.category?.emoji ?? '🏷️');
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _emoji.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _name.text.trim();
+    final emoji = _emoji.text.trim();
+    if (name.isEmpty) return;
+    Navigator.pop(context, (name, emoji.isEmpty ? '🏷️' : emoji));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.category == null ? 'Add category' : 'Edit category'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _name,
+            autofocus: true,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+          TextField(
+            controller: _emoji,
+            decoration: const InputDecoration(labelText: 'Emoji'),
+            onSubmitted: (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
+    );
   }
 }

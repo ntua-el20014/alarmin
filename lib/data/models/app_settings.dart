@@ -1,4 +1,5 @@
 import 'alarm_model.dart';
+import 'ringtone.dart';
 
 enum TimePickerStyle { materialClock, cupertinoWheel }
 
@@ -14,7 +15,7 @@ class AppSettings {
   const AppSettings.defaults()
       : timePickerStyle = TimePickerStyle.materialClock,
         isGroupedView = false,
-        defaultRingtone = 'default',
+        defaultRingtone = Ringtone.fallbackId,
         defaultVibration = VibrationSetting.standard,
         defaultSnoozeDuration = const Duration(minutes: 10);
 

@@ -1,27 +1,37 @@
-import 'package:alarm/alarm.dart' as native_alarm;
+import '../../data/services/alarm_scheduler.dart';
 
+/// Schedules the timer's completion as a native alarm, so it rings even when
+/// the app is in the background or the screen is off.
 abstract interface class TimerCompletionNotifier {
-  Future<void> notify();
+  Future<void> scheduleCompletion(DateTime at);
+  Future<void> cancel();
 }
 
 class NativeTimerCompletionNotifier implements TimerCompletionNotifier {
-  static const _completionId = 2147483646;
+  NativeTimerCompletionNotifier(this._scheduler, this._ringtone);
+
+  final AlarmScheduler _scheduler;
+  final String Function() _ringtone;
 
   @override
-  Future<void> notify() async {
-    if (!native_alarm.Alarm.android && !native_alarm.Alarm.iOS) return;
-    await native_alarm.Alarm.set(
-      alarmSettings: native_alarm.AlarmSettings(
-        id: _completionId,
-        dateTime: DateTime.now().add(const Duration(seconds: 1)),
-        assetAudioPath: 'packages/alarm/assets/not_blank.mp3',
-        loopAudio: false,
-        vibrate: true,
-        notificationSettings: const native_alarm.NotificationSettings(
-          title: 'Timer complete',
-          body: 'Your timer has finished.',
-        ),
+  Future<void> scheduleCompletion(DateTime at) async {
+    if (!_scheduler.isSupported) return;
+    await _scheduler.schedule(
+      NativeAlarmRequest(
+        id: timerNativeId,
+        dateTime: at,
+        title: 'Timer finished',
+        body: 'Your timer has finished.',
+        ringtone: _ringtone(),
       ),
     );
+  }
+
+  @override
+  Future<void> cancel() async {
+    if (!_scheduler.isSupported) return;
+    if ((await _scheduler.scheduledIds()).contains(timerNativeId)) {
+      await _scheduler.cancel(timerNativeId);
+    }
   }
 }
