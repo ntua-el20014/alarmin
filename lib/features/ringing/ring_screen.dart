@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../data/models/category_model.dart';
 import '../../data/models/ringing_alarm.dart';
+import '../../data/models/ringtone.dart';
+import '../../data/services/alarm_scheduler.dart';
+import 'emoji_palette.dart';
+import 'swipe_up_to_confirm.dart';
 
-/// Full-screen page shown while an alarm or the timer is ringing. It closes
+/// Full-screen page shown while an alarm or the timer is ringing.
+///
+/// The alarm's category emoji is shown large and tints the whole screen, so
+/// the user can tell what the alarm is about at a glance. The page closes
 /// itself when nothing is ringing any more (also when the alarm was stopped
 /// from its notification).
 class RingScreen extends ConsumerStatefulWidget {
@@ -15,6 +23,9 @@ class RingScreen extends ConsumerStatefulWidget {
 }
 
 class _RingScreenState extends ConsumerState<RingScreen> {
+  /// The test alarm snoozes briefly so snoozing can be tried out quickly.
+  static const _testSnooze = Duration(minutes: 1);
+
   late final ValueNotifier<RingingAlarm?> _ringing;
   bool _busy = false;
   bool _closing = false;
@@ -54,77 +65,329 @@ class _RingScreenState extends ConsumerState<RingScreen> {
     }
   }
 
+  Future<void> _snooze(RingingAlarm ringing) {
+    final handler = ref.read(alarmRingHandlerProvider);
+    final alarm = ringing.alarm;
+    if (alarm != null) {
+      return handler.snooze(alarm, nativeId: ringing.nativeId);
+    }
+    final settings = ref.read(settingsProvider).value;
+    return handler.snoozeStandalone(
+      ringing,
+      after: ringing.nativeId == testAlarmNativeId
+          ? _testSnooze
+          : settings?.defaultSnoozeDuration ?? const Duration(minutes: 10),
+      ringtone: settings?.defaultRingtone ?? Ringtone.fallbackId,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final handler = ref.read(alarmRingHandlerProvider);
-    final colors = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
+    final categories = ref.watch(categoriesProvider).value ?? const [];
+    final testCategoryId = ref.watch(testAlarmCategoryProvider);
 
     return PopScope(
       canPop: false,
-      child: Scaffold(
-        backgroundColor: colors.primaryContainer,
-        body: SafeArea(
-          child: ValueListenableBuilder<RingingAlarm?>(
-            valueListenable: _ringing,
-            builder: (context, ringing, _) {
-              if (ringing == null) return const SizedBox.shrink();
-              final alarm = ringing.alarm;
-              return Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    const Spacer(),
-                    Icon(Icons.alarm, size: 96, color: colors.primary),
-                    const SizedBox(height: 24),
-                    StreamBuilder<DateTime>(
-                      stream: Stream.periodic(
-                        const Duration(seconds: 1),
-                        (_) => DateTime.now(),
-                      ),
-                      builder: (context, snapshot) => Text(
-                        TimeOfDay.fromDateTime(snapshot.data ?? DateTime.now())
-                            .format(context),
-                        style: textTheme.displayLarge,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      ringing.title,
-                      style: textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const Spacer(),
-                    if (alarm != null && ringing.canSnooze)
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: _busy
-                              ? null
-                              : () => _run(() => handler.snooze(
-                                    alarm,
+      child: ValueListenableBuilder<RingingAlarm?>(
+        valueListenable: _ringing,
+        builder: (context, ringing, _) {
+          if (ringing == null) return const Scaffold();
+          return ValueListenableBuilder<String?>(
+            valueListenable: testCategoryId,
+            builder: (context, testCategory, _) {
+              final category = _categoryFor(ringing, categories, testCategory);
+              final emoji = category?.emoji ??
+                  (ringing.nativeId == timerNativeId ? '⏳' : '⏰');
+              return FutureBuilder<Color?>(
+                key: ValueKey(emoji),
+                future: EmojiPalette.seedColor(emoji),
+                builder: (context, snapshot) {
+                  final seed = snapshot.data;
+                  final theme = Theme.of(context);
+                  return Theme(
+                    data: seed == null
+                        ? theme
+                        : theme.copyWith(
+                            colorScheme: EmojiPalette.schemeFor(
+                              seed,
+                              theme.brightness,
+                            ),
+                          ),
+                    child: _RingBody(
+                      ringing: ringing,
+                      emoji: emoji,
+                      category: category,
+                      busy: _busy,
+                      onSnooze: () => _run(() => _snooze(ringing)),
+                      onStop: () => _run(() =>
+                          ref.read(alarmRingHandlerProvider).stop(ringing)),
+                      onTurnOffReminders: ringing.alarm == null
+                          ? null
+                          : () => _run(() =>
+                              ref.read(alarmRingHandlerProvider).dismissAll(
+                                    ringing.alarm!,
                                     nativeId: ringing.nativeId,
                                   )),
-                          icon: const Icon(Icons.snooze),
-                          label: const Text('Snooze'),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _busy
-                            ? null
-                            : () => _run(() => handler.stop(ringing)),
-                        icon: const Icon(Icons.alarm_off),
-                        label: Text(alarm == null ? 'Stop' : 'Dismiss'),
-                      ),
                     ),
-                  ],
-                ),
+                  );
+                },
               );
             },
+          );
+        },
+      ),
+    );
+  }
+
+  CategoryModel? _categoryFor(
+    RingingAlarm ringing,
+    List<CategoryModel> categories,
+    String? testCategoryId,
+  ) {
+    final categoryId = ringing.alarm?.categoryId ??
+        (ringing.nativeId == testAlarmNativeId ? testCategoryId : null);
+    if (categoryId == null) return null;
+    for (final category in categories) {
+      if (category.id == categoryId) return category;
+    }
+    return null;
+  }
+}
+
+class _RingBody extends StatelessWidget {
+  const _RingBody({
+    required this.ringing,
+    required this.emoji,
+    required this.category,
+    required this.busy,
+    required this.onSnooze,
+    required this.onStop,
+    this.onTurnOffReminders,
+  });
+
+  final RingingAlarm ringing;
+  final String emoji;
+  final CategoryModel? category;
+  final bool busy;
+  final VoidCallback onSnooze;
+  final VoidCallback onStop;
+  final VoidCallback? onTurnOffReminders;
+
+  @override
+  Widget build(BuildContext context) {
+    final reminders = ringing.upcomingReminders;
+    final colors = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final onBackground = colors.onPrimaryContainer;
+    final showTitle =
+        ringing.title.isNotEmpty && ringing.title != category?.name;
+
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [colors.primaryContainer, colors.surfaceContainerLow],
           ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(32, 24, 32, 32),
+            child: Column(
+              children: [
+                StreamBuilder<DateTime>(
+                  stream: Stream.periodic(
+                    const Duration(seconds: 1),
+                    (_) => DateTime.now(),
+                  ),
+                  builder: (context, snapshot) => Text(
+                    TimeOfDay.fromDateTime(snapshot.data ?? DateTime.now())
+                        .format(context),
+                    style:
+                        textTheme.displayMedium?.copyWith(color: onBackground),
+                  ),
+                ),
+                const Spacer(),
+                // Scales down on short screens instead of overflowing.
+                Flexible(
+                  flex: 6,
+                  child: FittedBox(child: _PulsingEmoji(emoji: emoji)),
+                ),
+                const SizedBox(height: 16),
+                if (category != null)
+                  Text(
+                    category!.name,
+                    style: textTheme.titleMedium?.copyWith(color: onBackground),
+                  ),
+                if (showTitle)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      ringing.title,
+                      style: textTheme.headlineSmall
+                          ?.copyWith(color: onBackground),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const Spacer(),
+                if (reminders.isNotEmpty) ...[
+                  Text(
+                    '${reminders.length == 1 ? 'Reminder' : 'Reminders'} at '
+                    '${reminders.map((at) => TimeOfDay.fromDateTime(at).format(context)).join(', ')}',
+                    style: textTheme.bodyLarge?.copyWith(color: onBackground),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (ringing.canSnooze) ...[
+                  SwipeUpToConfirm(
+                    label: 'Swipe up to snooze',
+                    icon: Icons.snooze,
+                    enabled: !busy,
+                    onConfirmed: onSnooze,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  height: 64,
+                  child: FilledButton.icon(
+                    onPressed: busy ? null : onStop,
+                    icon: const Icon(Icons.alarm_off),
+                    label: Text(ringing.alarm == null ? 'Stop' : 'Dismiss'),
+                    style: FilledButton.styleFrom(
+                      textStyle: textTheme.titleLarge,
+                    ),
+                  ),
+                ),
+                if (reminders.isNotEmpty && onTurnOffReminders != null) ...[
+                  const SizedBox(height: 8),
+                  _HoldButton(
+                    label: 'Hold to turn off reminders',
+                    enabled: !busy,
+                    color: onBackground,
+                    onConfirmed: onTurnOffReminders!,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The category emoji, gently pulsing so the screen reads as "ringing".
+class _PulsingEmoji extends StatefulWidget {
+  const _PulsingEmoji({required this.emoji});
+
+  final String emoji;
+
+  @override
+  State<_PulsingEmoji> createState() => _PulsingEmojiState();
+}
+
+class _PulsingEmojiState extends State<_PulsingEmoji>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.92, end: 1.08).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      ),
+      child: Text(
+        widget.emoji,
+        style: const TextStyle(fontSize: 160, height: 1.1),
+      ),
+    );
+  }
+}
+
+/// A button that only fires after being held down for [holdDuration], with
+/// a progress bar filling up meanwhile. Used to turn off reminders, which
+/// exist precisely to survive an accidental tap.
+class _HoldButton extends StatefulWidget {
+  const _HoldButton({
+    required this.label,
+    required this.enabled,
+    required this.color,
+    required this.onConfirmed,
+  });
+
+  static const holdDuration = Duration(milliseconds: 1500);
+
+  final String label;
+  final bool enabled;
+  final Color color;
+  final VoidCallback onConfirmed;
+
+  @override
+  State<_HoldButton> createState() => _HoldButtonState();
+}
+
+class _HoldButtonState extends State<_HoldButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _progress = AnimationController(
+    vsync: this,
+    duration: _HoldButton.holdDuration,
+  )..addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _progress.reset();
+        widget.onConfirmed();
+      }
+    });
+
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
+  }
+
+  void _release() {
+    if (_progress.status != AnimationStatus.completed) _progress.reverse();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: widget.enabled ? (_) => _progress.forward() : null,
+      onTapUp: (_) => _release(),
+      onTapCancel: _release,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Text(
+              widget.label,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: widget.color),
+            ),
+            const SizedBox(height: 6),
+            AnimatedBuilder(
+              animation: _progress,
+              builder: (context, _) => LinearProgressIndicator(
+                value: _progress.value,
+                color: widget.color,
+                backgroundColor: widget.color.withValues(alpha: 0.15),
+              ),
+            ),
+          ],
         ),
       ),
     );

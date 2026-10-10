@@ -147,8 +147,16 @@ void main() {
     expect(nativeAlarmId('alarm-1'), nativeAlarmId('alarm-1'));
     expect(nativeAlarmId('alarm-1'), isNot(0));
     expect(nativeAlarmId('alarm-1'), isNot(-1));
-    expect(nativeIdsFor('alarm-1'), hasLength(maxReincarnationCount + 3));
-    expect(nativeIdsFor('alarm-1'), isNot(contains(timerNativeId)));
+    expect(
+      {
+        primaryNativeId('alarm-1'),
+        followUpNativeId('alarm-1'),
+        snoozeNativeId('alarm-1'),
+        reminderNativeId('alarm-1', DateTime(2026, 9, 21, 7), 1),
+      },
+      hasLength(4),
+    );
+    expect(primaryNativeId('alarm-1'), isNot(timerNativeId));
   });
 }
 
@@ -172,7 +180,7 @@ AlarmModel _alarm({bool once = false, String ringtone = 'classic'}) {
     ringtone: ringtone,
     vibration: VibrationSetting.standard,
     snoozeDuration: const Duration(minutes: 10),
-    reincarnationCount: 2,
+    reincarnationCount: 0,
     reincarnationInterval: const Duration(minutes: 5),
     createdAt: createdAt,
     updatedAt: createdAt,

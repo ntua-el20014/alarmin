@@ -82,6 +82,7 @@ void main() {
     expect(settings.isGroupedView, isFalse);
     expect(settings.defaultVibration, VibrationSetting.standard);
     expect(settings.defaultSnoozeDuration, const Duration(minutes: 10));
+    expect(settings.themeMode, AppThemeMode.dark);
   });
 
   test('stopwatch sessions and laps have persistent identities', () {

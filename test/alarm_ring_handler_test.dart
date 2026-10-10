@@ -51,111 +51,169 @@ void main() {
     await scheduler.close();
   });
 
+  final sevenAm = DateTime(2026, 9, 21, 7);
+  int reminder(AlarmModel alarm, int index, {DateTime? occurrence}) =>
+      reminderNativeId(alarm.id, occurrence ?? sevenAm, index);
+
   Future<AlarmModel> ringingAlarm({
     AlarmScheduleType type = AlarmScheduleType.daily,
     bool deleteAfterUse = false,
+    int reminders = 2,
   }) async {
     now = DateTime(2026, 9, 21, 6);
     final alarm = await service.save(
-      _alarm(recurrence: type, deleteAfterUse: deleteAfterUse),
+      _alarm(
+        recurrence: type,
+        deleteAfterUse: deleteAfterUse,
+        reminders: reminders,
+      ),
     );
-    now = DateTime(2026, 9, 21, 7);
+    now = sevenAm;
     scheduler.ring(primaryNativeId(alarm.id));
     await handler.handleNativeRing(primaryNativeId(alarm.id));
     return alarm;
   }
 
-  test('first snooze schedules the whole reincarnation chain', () async {
+  Future<void> ringAt(int nativeId, DateTime at) async {
+    now = at;
+    scheduler.ring(nativeId);
+    await handler.handleNativeRing(nativeId);
+  }
+
+  test('saving schedules every occurrence with its reminders up front',
+      () async {
+    now = DateTime(2026, 9, 21, 6);
+    final alarm = await service.save(
+      _alarm(recurrence: AlarmScheduleType.daily, reminders: 2),
+    );
+
+    final tomorrow = DateTime(2026, 9, 22, 7);
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime, sevenAm);
+    expect(scheduler.active[reminder(alarm, 1)]?.dateTime,
+        DateTime(2026, 9, 21, 7, 5));
+    expect(scheduler.active[reminder(alarm, 2)]?.dateTime,
+        DateTime(2026, 9, 21, 7, 10));
+    expect(scheduler.active[followUpNativeId(alarm.id)]?.dateTime, tomorrow);
+    expect(
+      scheduler.active[reminder(alarm, 2, occurrence: tomorrow)]?.dateTime,
+      DateTime(2026, 9, 22, 7, 10),
+    );
+    expect(scheduler.active[reminder(alarm, 3)], isNull);
+  });
+
+  test('without reminders only the occurrences are scheduled', () async {
+    now = DateTime(2026, 9, 21, 6);
+    final alarm = await service.save(
+      _alarm(recurrence: AlarmScheduleType.daily, reminders: 0),
+    );
+
+    expect(scheduler.active.keys,
+        {primaryNativeId(alarm.id), followUpNativeId(alarm.id)});
+  });
+
+  test('dismissing the first ring keeps the reminders', () async {
+    final alarm = await ringingAlarm();
+    expect(ringing.value?.upcomingReminders, [
+      DateTime(2026, 9, 21, 7, 5),
+      DateTime(2026, 9, 21, 7, 10),
+    ]);
+
+    await handler.dismiss(alarm, nativeId: primaryNativeId(alarm.id));
+
+    expect(await scheduler.isRinging(primaryNativeId(alarm.id)), isFalse);
+    expect(scheduler.active.containsKey(reminder(alarm, 1)), isTrue);
+    expect(scheduler.active.containsKey(reminder(alarm, 2)), isTrue);
+    // The regular schedule moves on to tomorrow.
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
+        DateTime(2026, 9, 22, 7));
+  });
+
+  test('stopping the first ring from the notification keeps the reminders',
+      () async {
+    final alarm = await ringingAlarm();
+    now = sevenAm.add(const Duration(seconds: 30));
+
+    scheduler.stopFromNotification(primaryNativeId(alarm.id));
+    await service.handleNativeUpdate(primaryNativeId(alarm.id));
+
+    expect(scheduler.active.containsKey(reminder(alarm, 1)), isTrue);
+    expect(scheduler.active.containsKey(reminder(alarm, 2)), isTrue);
+  });
+
+  test('each reminder ring counts down the remaining reminders', () async {
+    final alarm = await ringingAlarm();
+    await handler.dismiss(alarm, nativeId: primaryNativeId(alarm.id));
+
+    await ringAt(reminder(alarm, 1), DateTime(2026, 9, 21, 7, 5));
+    expect(ringing.value?.upcomingReminders, [DateTime(2026, 9, 21, 7, 10)]);
+    final run = (await reincarnationRepository.activeForAlarm(alarm.id))
+        .firstWhere((run) => run.originOccurrenceAt == sevenAm);
+    expect(run.remainingCount, 1);
+
+    await handler.dismiss(alarm, nativeId: reminder(alarm, 1));
+    await ringAt(reminder(alarm, 2), DateTime(2026, 9, 21, 7, 10));
+    expect(ringing.value?.upcomingReminders, isEmpty);
+  });
+
+  test('turning off reminders cancels today but keeps tomorrow', () async {
+    final alarm = await ringingAlarm();
+
+    await handler.dismissAll(alarm, nativeId: primaryNativeId(alarm.id));
+
+    final tomorrow = DateTime(2026, 9, 22, 7);
+    expect(scheduler.active.containsKey(reminder(alarm, 1)), isFalse);
+    expect(scheduler.active.containsKey(reminder(alarm, 2)), isFalse);
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime, tomorrow);
+    expect(
+      scheduler.active.containsKey(reminder(alarm, 1, occurrence: tomorrow)),
+      isTrue,
+    );
+    expect(ringing.value, isNull);
+  });
+
+  test('snooze rings again later without touching the reminders', () async {
     final alarm = await ringingAlarm();
 
     await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
 
     expect(await scheduler.isRinging(primaryNativeId(alarm.id)), isFalse);
-    expect(
-      [
-        for (var index = 0; index <= alarm.reincarnationCount; index++)
-          scheduler.active[reincarnationNativeId(alarm.id, index)]?.dateTime,
-      ],
-      [
-        now.add(const Duration(minutes: 10)),
-        now.add(const Duration(minutes: 15)),
-        now.add(const Duration(minutes: 20)),
-      ],
-    );
-    final run = await reincarnationRepository.findActive(alarm.id);
-    expect(run?.remainingCount, alarm.reincarnationCount);
-    // The regular schedule moves on to tomorrow.
-    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
-        DateTime(2026, 9, 22, 7));
+    expect(scheduler.active[snoozeNativeId(alarm.id)]?.dateTime,
+        sevenAm.add(const Duration(minutes: 10)));
+    expect(scheduler.active.containsKey(reminder(alarm, 1)), isTrue);
     expect(ringing.value, isNull);
   });
 
-  test('each reincarnated ring decrements the remaining count once', () async {
-    final alarm = await ringingAlarm();
-    await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
-
-    now = now.add(const Duration(minutes: 15));
-    final reincarnation =
-        await handler.handleNativeRing(reincarnationNativeId(alarm.id, 1));
-
-    expect(reincarnation.canSnooze, isTrue);
-    expect(
-      (await reincarnationRepository.findActive(alarm.id))?.remainingCount,
-      alarm.reincarnationCount - 1,
+  test('a one-time alarm is deleted only after its last reminder', () async {
+    final alarm = await ringingAlarm(
+      type: AlarmScheduleType.once,
+      deleteAfterUse: true,
     );
 
-    now = now.add(const Duration(minutes: 5));
-    final last =
-        await handler.handleNativeRing(reincarnationNativeId(alarm.id, 2));
+    await handler.dismiss(alarm, nativeId: primaryNativeId(alarm.id));
+    expect(await alarmRepository.findById(alarm.id), isNotNull);
 
-    expect(last.canSnooze, isFalse);
-    expect(
-      (await reincarnationRepository.findActive(alarm.id))?.remainingCount,
-      0,
-    );
-  });
+    await ringAt(reminder(alarm, 1), DateTime(2026, 9, 21, 7, 5));
+    await handler.dismiss(alarm, nativeId: reminder(alarm, 1));
+    expect(await alarmRepository.findById(alarm.id), isNotNull);
 
-  test('snoozing a reincarnated ring only silences it', () async {
-    final alarm = await ringingAlarm();
-    await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
-    final scheduledCount = scheduler.scheduled.length;
-
-    now = now.add(const Duration(minutes: 10));
-    scheduler.ring(reincarnationNativeId(alarm.id, 0));
-    await handler.snooze(alarm, nativeId: reincarnationNativeId(alarm.id, 0));
-
-    expect(scheduler.scheduled, hasLength(scheduledCount));
-    expect(scheduler.active.containsKey(reincarnationNativeId(alarm.id, 0)),
-        isFalse);
-    expect(scheduler.active.containsKey(reincarnationNativeId(alarm.id, 1)),
-        isTrue);
-  });
-
-  test('dismiss ends the chain and keeps the recurring schedule', () async {
-    final alarm = await ringingAlarm();
-    await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
-
-    await handler.dismiss(alarm);
-
-    expect(await reincarnationRepository.findActive(alarm.id), isNull);
-    expect(scheduler.active.keys, {
-      primaryNativeId(alarm.id),
-      followUpNativeId(alarm.id),
-    });
-    expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
-        DateTime(2026, 9, 22, 7));
+    await ringAt(reminder(alarm, 2), DateTime(2026, 9, 21, 7, 10));
+    await handler.dismiss(alarm, nativeId: reminder(alarm, 2));
+    expect(await alarmRepository.findById(alarm.id), isNull);
+    expect(scheduler.active, isEmpty);
   });
 
   test('delete-after-use removes a one-time alarm only on dismissal', () async {
     final alarm = await ringingAlarm(
       type: AlarmScheduleType.once,
       deleteAfterUse: true,
+      reminders: 0,
     );
 
     await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
     expect(await alarmRepository.findById(alarm.id), isNotNull);
 
-    await handler.dismiss(alarm);
+    await ringAt(snoozeNativeId(alarm.id), DateTime(2026, 9, 21, 7, 10));
+    await handler.dismiss(alarm, nativeId: snoozeNativeId(alarm.id));
 
     expect(await alarmRepository.findById(alarm.id), isNull);
     expect(scheduler.active, isEmpty);
@@ -175,6 +233,28 @@ void main() {
     now = DateTime(2026, 9, 21, 7, 1);
     scheduler.stopFromNotification(primaryNativeId(alarm.id));
     await _settle();
+    expect(ringing.value, isNull);
+  });
+
+  test('snoozing the test alarm sets it again after the delay', () async {
+    handler.start();
+    scheduler.ring(testAlarmNativeId);
+    await _settle();
+    expect(ringing.value?.canSnooze, isTrue);
+
+    await handler.snoozeStandalone(
+      ringing.value!,
+      after: const Duration(minutes: 1),
+      ringtone: 'gentle',
+    );
+
+    expect(await scheduler.isRinging(testAlarmNativeId), isFalse);
+    final request = scheduler.active[testAlarmNativeId]!;
+    expect(request.ringtone, 'gentle');
+    expect(
+      request.dateTime.difference(DateTime.now()).inSeconds,
+      inInclusiveRange(55, 60),
+    );
     expect(ringing.value, isNull);
   });
 
@@ -198,6 +278,7 @@ Future<void> _settle() =>
 AlarmModel _alarm({
   required AlarmScheduleType recurrence,
   bool deleteAfterUse = false,
+  int reminders = 2,
 }) {
   final createdAt = DateTime(2026, 9, 20);
   final recurrenceRule = recurrence == AlarmScheduleType.once
@@ -216,7 +297,7 @@ AlarmModel _alarm({
     ringtone: 'classic',
     vibration: VibrationSetting.standard,
     snoozeDuration: const Duration(minutes: 10),
-    reincarnationCount: 2,
+    reincarnationCount: reminders,
     reincarnationInterval: const Duration(minutes: 5),
     createdAt: createdAt,
     updatedAt: createdAt,

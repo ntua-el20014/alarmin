@@ -129,8 +129,10 @@ class StopwatchController extends Notifier<StopwatchState> {
       : 'session-${state.startedAt!.microsecondsSinceEpoch}';
 
   void _startTicker() {
+    // Roughly one update per frame: the display shows hundredths, and a
+    // 100 ms tick left the second decimal digit frozen.
     _ticker ??= Timer.periodic(
-      const Duration(milliseconds: 100),
+      const Duration(milliseconds: 16),
       (_) => _updateElapsed(),
     );
   }

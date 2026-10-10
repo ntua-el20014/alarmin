@@ -72,7 +72,9 @@ void main() {
     expect(await database.select(database.alarmWeekdays).get(), hasLength(1));
     // Legacy runs have no chain timing and are ignored.
     expect(
-        await ReincarnationRepository(database).findActive('alarm-1'), isNull);
+      await ReincarnationRepository(database).activeForAlarm('alarm-1'),
+      isEmpty,
+    );
 
     // Cascades now work.
     await AlarmRepository(database).delete('alarm-1');

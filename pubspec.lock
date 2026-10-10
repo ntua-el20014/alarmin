@@ -12,10 +12,9 @@ packages:
   alarm:
     dependency: "direct main"
     description:
-      name: alarm
-      sha256: "6f9dd3d0caee8db637f49d474ac29b0dd4ee6a58eeffe906ed87b897dfbbdf7f"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/alarm"
+      relative: true
+    source: path
     version: "4.1.1"
   analyzer:
     dependency: transitive

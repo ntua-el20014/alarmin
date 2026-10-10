@@ -3,6 +3,9 @@ import 'ringtone.dart';
 
 enum TimePickerStyle { materialClock, cupertinoWheel }
 
+/// Stored by index: keep `dark` first, it is the default.
+enum AppThemeMode { dark, light }
+
 class AppSettings {
   const AppSettings({
     required this.timePickerStyle,
@@ -10,6 +13,7 @@ class AppSettings {
     required this.defaultRingtone,
     required this.defaultVibration,
     required this.defaultSnoozeDuration,
+    this.themeMode = AppThemeMode.dark,
   });
 
   const AppSettings.defaults()
@@ -17,13 +21,15 @@ class AppSettings {
         isGroupedView = false,
         defaultRingtone = Ringtone.fallbackId,
         defaultVibration = VibrationSetting.standard,
-        defaultSnoozeDuration = const Duration(minutes: 10);
+        defaultSnoozeDuration = const Duration(minutes: 10),
+        themeMode = AppThemeMode.dark;
 
   final TimePickerStyle timePickerStyle;
   final bool isGroupedView;
   final String defaultRingtone;
   final VibrationSetting defaultVibration;
   final Duration defaultSnoozeDuration;
+  final AppThemeMode themeMode;
 
   AppSettings copyWith({
     TimePickerStyle? timePickerStyle,
@@ -31,6 +37,7 @@ class AppSettings {
     String? defaultRingtone,
     VibrationSetting? defaultVibration,
     Duration? defaultSnoozeDuration,
+    AppThemeMode? themeMode,
   }) {
     return AppSettings(
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -39,6 +46,7 @@ class AppSettings {
       defaultVibration: defaultVibration ?? this.defaultVibration,
       defaultSnoozeDuration:
           defaultSnoozeDuration ?? this.defaultSnoozeDuration,
+      themeMode: themeMode ?? this.themeMode,
     );
   }
 }

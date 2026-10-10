@@ -1,46 +1,69 @@
 enum ReincarnationStatus { active, completed, cancelled }
 
-/// Runtime state of a snooze chain, kept apart from the saved alarm.
+/// The reminder rings ("reincarnations") that follow one occurrence of an
+/// alarm, kept apart from the saved alarm definition.
 ///
-/// The first snooze schedules every firing of the chain up front:
-/// firing `k` happens at `firstFireAt + k * interval` for
-/// `k = 0..reincarnationCount`. Firing 0 is the snoozed ring itself; the
-/// remaining [reincarnationCount] firings are the reincarnations. Scheduling
-/// the whole chain natively means it keeps working while the app is killed.
+/// An occurrence at `T` with [reminderCount] reminders every [interval]
+/// also rings at `T + k * interval` for `k = 1..reminderCount`. Reminders are
+/// scheduled natively together with the occurrence, so stopping the first
+/// ring by accident (or from the notification) does not cancel them; only
+/// an explicit "turn off reminders" does.
 class ReincarnationRunModel {
   const ReincarnationRunModel({
     required this.id,
     required this.alarmId,
     required this.originOccurrenceAt,
+    required this.reminderCount,
+    required this.interval,
     required this.remainingCount,
     required this.nextFireAt,
     required this.status,
-    required this.firstFireAt,
-    required this.reincarnationCount,
-    required this.interval,
   });
+
+  factory ReincarnationRunModel.forOccurrence({
+    required String alarmId,
+    required DateTime occurrence,
+    required int reminderCount,
+    required Duration interval,
+  }) {
+    return ReincarnationRunModel(
+      id: idFor(alarmId, occurrence),
+      alarmId: alarmId,
+      originOccurrenceAt: occurrence,
+      reminderCount: reminderCount,
+      interval: interval,
+      remainingCount: reminderCount,
+      nextFireAt: occurrence.add(interval),
+      status: ReincarnationStatus.active,
+    );
+  }
+
+  static String idFor(String alarmId, DateTime occurrence) =>
+      'run-$alarmId-${occurrence.millisecondsSinceEpoch}';
 
   final String id;
   final String alarmId;
-  final DateTime originOccurrenceAt;
 
-  /// Reincarnated firings that have not rung yet.
+  /// The regular occurrence these reminders follow.
+  final DateTime originOccurrenceAt;
+  final int reminderCount;
+  final Duration interval;
+
+  /// Reminders that have not rung yet.
   final int remainingCount;
   final DateTime nextFireAt;
   final ReincarnationStatus status;
-  final DateTime firstFireAt;
-  final int reincarnationCount;
-  final Duration interval;
 
-  DateTime firingAt(int index) => firstFireAt.add(interval * index);
+  /// Reminder [index] (1-based) rings at this time.
+  DateTime reminderAt(int index) => originOccurrenceAt.add(interval * index);
 
-  List<DateTime> get firingTimes => [
-        for (var index = 0; index <= reincarnationCount; index++)
-          firingAt(index),
+  List<DateTime> remindersAfter(DateTime moment) => [
+        for (var index = 1; index <= reminderCount; index++)
+          if (reminderAt(index).isAfter(moment)) reminderAt(index),
       ];
 
-  bool hasFiringAfter(DateTime moment) =>
-      firingAt(reincarnationCount).isAfter(moment);
+  bool hasReminderAfter(DateTime moment) =>
+      reminderCount > 0 && reminderAt(reminderCount).isAfter(moment);
 
   ReincarnationRunModel copyWith({
     int? remainingCount,
@@ -51,12 +74,11 @@ class ReincarnationRunModel {
       id: id,
       alarmId: alarmId,
       originOccurrenceAt: originOccurrenceAt,
+      reminderCount: reminderCount,
+      interval: interval,
       remainingCount: remainingCount ?? this.remainingCount,
       nextFireAt: nextFireAt ?? this.nextFireAt,
       status: status ?? this.status,
-      firstFireAt: firstFireAt,
-      reincarnationCount: reincarnationCount,
-      interval: interval,
     );
   }
 }

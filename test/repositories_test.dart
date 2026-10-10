@@ -116,28 +116,26 @@ void main() {
     expect((await alarmRepository.findById('alarm-1'))?.categoryId, 'work');
   });
 
-  test('re-saving an alarm keeps its active snooze chain', () async {
+  test('re-saving an alarm keeps its pending reminders', () async {
     final alarmRepository = AlarmRepository(database);
     final reincarnationRepository = ReincarnationRepository(database);
     final alarm = _alarm();
     await alarmRepository.save(alarm);
     await reincarnationRepository.save(
-      ReincarnationRunModel(
-        id: 'run-1',
+      ReincarnationRunModel.forOccurrence(
         alarmId: alarm.id,
-        originOccurrenceAt: now,
-        remainingCount: 2,
-        nextFireAt: now,
-        status: ReincarnationStatus.active,
-        firstFireAt: now,
-        reincarnationCount: 2,
+        occurrence: now,
+        reminderCount: 2,
         interval: const Duration(minutes: 5),
       ),
     );
 
     await alarmRepository.save(alarm.copyWith(title: 'Renamed'));
 
-    expect(await reincarnationRepository.findActive(alarm.id), isNotNull);
+    expect(
+      await reincarnationRepository.activeForAlarm(alarm.id),
+      hasLength(1),
+    );
   });
 
   test('deleting an alarm deletes its weekdays and snooze chains', () async {

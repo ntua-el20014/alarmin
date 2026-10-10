@@ -54,18 +54,51 @@ class AlarmRingHandler {
     }
   }
 
-  Future<void> dismiss(AlarmModel alarm) async {
+  /// Stops this ring; reminders still to come keep ringing.
+  Future<void> dismiss(AlarmModel alarm, {int? nativeId}) async {
     try {
-      await _alarmService.dismiss(alarm);
+      await _alarmService.dismiss(alarm, ringingNativeId: nativeId);
     } finally {
       _clearIfAlarm(alarm.id);
+    }
+  }
+
+  /// Stops this ring and turns off the reminders still to come.
+  Future<void> dismissAll(AlarmModel alarm, {int? nativeId}) async {
+    try {
+      await _alarmService.dismissAll(alarm, ringingNativeId: nativeId);
+    } finally {
+      _clearIfAlarm(alarm.id);
+    }
+  }
+
+  /// Snoozes a ringing alarm that has no saved [AlarmModel] (the timer or the
+  /// test alarm) by setting the same native alarm again [after] from now.
+  Future<void> snoozeStandalone(
+    RingingAlarm ringing, {
+    required Duration after,
+    required String ringtone,
+  }) async {
+    try {
+      await _scheduler.cancel(ringing.nativeId);
+      await _scheduler.schedule(
+        NativeAlarmRequest(
+          id: ringing.nativeId,
+          dateTime: DateTime.now().add(after),
+          title: ringing.title,
+          body: 'Snoozed',
+          ringtone: ringtone,
+        ),
+      );
+    } finally {
+      if (_ringing.value?.nativeId == ringing.nativeId) _ringing.value = null;
     }
   }
 
   /// Stops [ringing], dismissing it when it belongs to a saved alarm.
   Future<void> stop(RingingAlarm ringing) async {
     final alarm = ringing.alarm;
-    if (alarm != null) return dismiss(alarm);
+    if (alarm != null) return dismiss(alarm, nativeId: ringing.nativeId);
     try {
       await _scheduler.cancel(ringing.nativeId);
     } finally {

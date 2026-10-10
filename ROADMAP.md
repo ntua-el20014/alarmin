@@ -6,7 +6,7 @@ This document describes the planned implementation of the alarm, calendar, timer
 
 - Use the device's local timezone for alarm recurrence. Store the recurrence rule separately from the next calculated occurrence; timezone migration support is out of scope for the first version.
 - A one-time alarm with `deleteAfterUse` enabled is deleted only after it has been dismissed, not immediately after it fires.
-- Reincarnation begins only after the first snooze. This trigger policy is fixed and is not user-configurable.
+- Reincarnation ("reminders") is automatic: an alarm with N reminders every X minutes rings at T, T+X, ..., T+N·X, all scheduled up front. Dismissing or stopping a ring (including from the notification) does not cancel the remaining reminders, which protects against stopping the alarm by accident. Only a deliberate press-and-hold "turn off reminders" on the ring screen cancels them. (This replaces the earlier "starts after the first snooze" policy.)
 - Categories are user-editable and deletable. Deleting a category leaves its alarms intact and clears their `categoryId`.
 - Saved stopwatch sessions cannot be edited; they can only be deleted.
 - Timer state and an in-progress stopwatch do not survive an app restart. Saved completed stopwatch history does survive.
@@ -97,7 +97,7 @@ Keep configuration on the alarm, but keep an active firing chain separate from t
 
 This prevents a snooze from corrupting the recurring alarm definition.
 
-Implemented policy: the first snooze schedules the whole chain natively at once, firing at `firstFireAt + k * reincarnationInterval` for `k = 0..reincarnationCount` (`firstFireAt` = snooze time + `snoozeDuration`). Snoozing a ring that is part of the chain only silences it, because the next firing is already scheduled; Dismiss ends the chain. Scheduling the chain up front keeps it working while the app is killed. `reincarnationCount` is capped at 10, because every firing owns its own native id. The runtime chain is created only when the first snooze action occurs, and its trigger rule is fixed rather than configurable. Every scheduled native alarm must have an app-owned identifier so cancellation and rescheduling are deterministic.
+Implemented policy: each scheduled occurrence gets a run whose reminders fire at `origin + k * reincarnationInterval` for `k = 1..reincarnationCount` (capped at 10). Reminder native ids are keyed by occurrence, so moving the alarm on to tomorrow never cancels today's pending reminders. Snooze is a separate one-shot ring (`#snooze` id) and leaves reminders alone. A one-time alarm completes (or is deleted) only once its reminders and any snooze are over. Ended runs are deleted (runtime state only).
 
 ### Category
 
@@ -292,7 +292,7 @@ Milestones:
 - Weekly schedules support multiple weekdays.
 - Date boundaries, daylight-saving transitions, and past schedules are handled according to the confirmed timezone policy.
 - Reincarnation decrements exactly once per generated firing and stops at zero.
-- Reincarnation is not created before the first snooze and uses the fixed trigger policy.
+- Reminders are scheduled with the occurrence and survive dismissing or stopping a ring; only "turn off reminders" cancels them.
 - `deleteAfterUse` removes a one-time alarm after dismissal, not merely after firing.
 - Disabling/deleting an alarm cancels its runtime chain.
 - Stopwatch lap durations and total time are correct across pauses.

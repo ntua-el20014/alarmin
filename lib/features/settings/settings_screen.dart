@@ -6,7 +6,9 @@ import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/ringtone.dart';
+import '../../data/services/alarm_permissions.dart';
 import '../../data/services/alarm_scheduler.dart';
+import 'emoji_input.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -67,6 +69,21 @@ class _SettingsSection extends ConsumerWidget {
     final snoozeMinutes = settings.defaultSnoozeDuration.inMinutes;
     return Column(
       children: [
+        SwitchListTile(
+          title: const Text('Dark theme'),
+          secondary: Icon(
+            settings.themeMode == AppThemeMode.dark
+                ? Icons.dark_mode
+                : Icons.light_mode,
+          ),
+          value: settings.themeMode == AppThemeMode.dark,
+          onChanged: (dark) => _save(
+            ref,
+            settings.copyWith(
+              themeMode: dark ? AppThemeMode.dark : AppThemeMode.light,
+            ),
+          ),
+        ),
         ListTile(
           title: const Text('Time picker'),
           trailing: DropdownButton<TimePickerStyle>(
@@ -211,8 +228,10 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
             onTap: entry.value
                 ? null
                 : () async {
-                    if (entry.key == 'Ignore battery optimization') {
+                    if (entry.key == AlarmPermissions.batteryLabel) {
                       await permissions.requestBatteryOptimizationExemption();
+                    } else if (entry.key == AlarmPermissions.fullScreenLabel) {
+                      await permissions.openWakeScreenSettings();
                     } else {
                       await permissions.openSystemSettings();
                     }
@@ -236,6 +255,33 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
 
   Future<void> _ringTestAlarm(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final categories = ref.read(categoriesProvider).value ?? const [];
+    // Ask which category to preview, so its emoji and colors can be checked.
+    final choice = await showModalBottomSheet<(String?,)>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Preview which category?')),
+            ListTile(
+              leading: const Text('⏰', style: TextStyle(fontSize: 24)),
+              title: const Text('No category'),
+              onTap: () => Navigator.pop(context, (null,)),
+            ),
+            for (final category in categories)
+              ListTile(
+                leading:
+                    Text(category.emoji, style: const TextStyle(fontSize: 24)),
+                title: Text(category.name),
+                onTap: () => Navigator.pop(context, (category.id,)),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+    ref.read(testAlarmCategoryProvider).value = choice.$1;
     final ringtone = ref.read(settingsProvider).value?.defaultRingtone ??
         Ringtone.fallbackId;
     try {
@@ -321,6 +367,10 @@ class _CategorySection extends ConsumerWidget {
             updatedAt: now,
           ),
         );
+    // Scheduled notifications show the category emoji in their title.
+    if (category != null && category.emoji != result.$2) {
+      await ref.read(alarmServiceProvider).recover();
+    }
   }
 
   Future<void> _deleteCategory(
@@ -374,32 +424,78 @@ class _CategoryDialogState extends State<_CategoryDialog> {
     super.dispose();
   }
 
+  String? _error;
+
   void _submit() {
     final name = _name.text.trim();
     final emoji = _emoji.text.trim();
-    if (name.isEmpty) return;
-    Navigator.pop(context, (name, emoji.isEmpty ? '🏷️' : emoji));
+    if (name.isEmpty) {
+      setState(() => _error = 'Enter a name.');
+      return;
+    }
+    if (!isSingleEmoji(emoji)) {
+      setState(() => _error = 'Pick one emoji.');
+      return;
+    }
+    Navigator.pop(context, (name, emoji));
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.category == null ? 'Add category' : 'Edit category'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _name,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(labelText: 'Name'),
-          ),
-          TextField(
-            controller: _emoji,
-            decoration: const InputDecoration(labelText: 'Emoji'),
-            onSubmitted: (_) => _submit(),
-          ),
-        ],
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _name,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _emoji,
+              inputFormatters: [SingleEmojiFormatter()],
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32),
+              decoration: const InputDecoration(
+                labelText: 'Emoji',
+                helperText: 'One emoji, from your emoji keyboard or below',
+              ),
+              onChanged: (_) => setState(() => _error = null),
+              onSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                for (final emoji in suggestedCategoryEmoji)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => setState(() {
+                      _emoji.text = emoji;
+                      _error = null;
+                    }),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Text(emoji, style: const TextStyle(fontSize: 26)),
+                    ),
+                  ),
+              ],
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
       actions: [
         TextButton(

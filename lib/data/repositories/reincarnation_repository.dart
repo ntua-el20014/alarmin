@@ -8,19 +8,28 @@ class ReincarnationRepository {
 
   final AppDatabase _database;
 
-  Future<ReincarnationRunModel?> findActive(String alarmId) async {
+  /// Active reminder runs of [alarmId], oldest occurrence first.
+  Future<List<ReincarnationRunModel>> activeForAlarm(String alarmId) async {
     final rows = await (_database.select(_database.reincarnationRuns)
           ..where(
             (run) =>
                 run.alarmId.equals(alarmId) &
                 run.status.equals(ReincarnationStatus.active.index),
-          ))
+          )
+          ..orderBy(
+              [(run) => OrderingTerm(expression: run.originOccurrenceAt)]))
         .get();
-    for (final row in rows) {
-      final run = _toModel(row);
-      if (run != null) return run;
-    }
-    return null;
+    return [
+      for (final row in rows)
+        if (_toModel(row) case final run?) run,
+    ];
+  }
+
+  Future<ReincarnationRunModel?> findById(String id) async {
+    final row = await (_database.select(_database.reincarnationRuns)
+          ..where((run) => run.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
   }
 
   Future<void> save(ReincarnationRunModel run) {
@@ -32,46 +41,38 @@ class ReincarnationRepository {
             remainingCount: run.remainingCount,
             nextFireAt: run.nextFireAt,
             status: run.status.index,
-            firstFireAt: Value(run.firstFireAt),
-            chainReincarnationCount: Value(run.reincarnationCount),
+            firstFireAt: Value(run.reminderAt(1)),
+            chainReincarnationCount: Value(run.reminderCount),
             chainIntervalSeconds: Value(run.interval.inSeconds),
           ),
         );
   }
 
-  Future<void> cancelForAlarm(String alarmId) {
-    return (_database.update(_database.reincarnationRuns)
-          ..where(
-            (run) =>
-                run.alarmId.equals(alarmId) &
-                run.status.equals(ReincarnationStatus.active.index),
-          ))
-        .write(
-      ReincarnationRunsCompanion(
-        status: Value(ReincarnationStatus.cancelled.index),
-      ),
-    );
+  Future<void> delete(String id) {
+    return (_database.delete(_database.reincarnationRuns)
+          ..where((run) => run.id.equals(id)))
+        .go();
   }
 
-  /// Returns null for legacy (schema v1) rows that lack chain timing; those
-  /// chains were never fully scheduled and are ignored.
+  Future<void> deleteForAlarm(String alarmId) {
+    return (_database.delete(_database.reincarnationRuns)
+          ..where((run) => run.alarmId.equals(alarmId)))
+        .go();
+  }
+
   ReincarnationRunModel? _toModel(ReincarnationRun row) {
-    final firstFireAt = row.firstFireAt;
     final count = row.chainReincarnationCount;
     final intervalSeconds = row.chainIntervalSeconds;
-    if (firstFireAt == null || count == null || intervalSeconds == null) {
-      return null;
-    }
+    if (count == null || intervalSeconds == null) return null;
     return ReincarnationRunModel(
       id: row.id,
       alarmId: row.alarmId,
       originOccurrenceAt: row.originOccurrenceAt,
+      reminderCount: count,
+      interval: Duration(seconds: intervalSeconds),
       remainingCount: row.remainingCount,
       nextFireAt: row.nextFireAt,
       status: ReincarnationStatus.values[row.status],
-      firstFireAt: firstFireAt,
-      reincarnationCount: count,
-      interval: Duration(seconds: intervalSeconds),
     );
   }
 }

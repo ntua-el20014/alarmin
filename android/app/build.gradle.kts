@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // MainActivity observes the alarm plugin's LiveData ringing state.
+    implementation("androidx.lifecycle:lifecycle-livedata-core:2.7.0")
+}

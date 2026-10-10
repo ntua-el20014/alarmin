@@ -55,6 +55,7 @@ final alarmServiceProvider = Provider<AlarmService>((ref) {
   return AlarmService(
     repository: ref.watch(alarmRepositoryProvider),
     reincarnationRepository: ref.watch(reincarnationRepositoryProvider),
+    categoryRepository: ref.watch(categoryRepositoryProvider),
     scheduler: ref.watch(alarmSchedulerProvider),
   );
 });
@@ -64,6 +65,14 @@ final ringingAlarmProvider = Provider<ValueNotifier<RingingAlarm?>>((ref) {
   final ringing = ValueNotifier<RingingAlarm?>(null);
   ref.onDispose(ringing.dispose);
   return ringing;
+});
+
+/// Category the Settings test alarm previews on the ring screen; null for
+/// none. Kept in memory only.
+final testAlarmCategoryProvider = Provider<ValueNotifier<String?>>((ref) {
+  final categoryId = ValueNotifier<String?>(null);
+  ref.onDispose(categoryId.dispose);
+  return categoryId;
 });
 
 final alarmRingHandlerProvider = Provider<AlarmRingHandler>((ref) {

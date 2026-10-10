@@ -205,7 +205,9 @@ class _AlarmTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${alarm.title} · ${describeRecurrence(alarm.recurrence)}\n'
-        '${describeNextOccurrence(alarm)}',
+        '${describeNextOccurrence(alarm)}'
+        '${alarm.reincarnationCount > 0 ? ' · +${alarm.reincarnationCount} '
+            'every ${alarm.reincarnationInterval.inMinutes} min' : ''}',
       ),
       isThreeLine: true,
       onTap: () => showAlarmEditor(context, alarm: alarm),
@@ -293,7 +295,7 @@ class _AlarmEditor extends ConsumerStatefulWidget {
 
 class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
   static const _snoozeOptions = [1, 3, 5, 10, 15, 20, 30];
-  static const _intervalOptions = [1, 2, 3, 5, 10, 15];
+  static const _intervalOptions = [1, 2, 3, 5, 10, 15, 20, 30];
 
   late final TextEditingController _titleController;
   late final TextEditingController _intervalController;
@@ -353,7 +355,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
       (alarm?.snoozeDuration ?? settings.defaultSnoozeDuration).inMinutes,
       _snoozeOptions,
     );
-    _reincarnationCount = (alarm?.reincarnationCount ?? 2)
+    _reincarnationCount = (alarm?.reincarnationCount ?? 0)
         .clamp(0, maxReincarnationCount)
         .toInt();
     _reincarnationIntervalMinutes = _nearest(
@@ -524,6 +526,42 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
                 value: _deleteAfterUse,
                 onChanged: (value) => setState(() => _deleteAfterUse = value),
               ),
+            DropdownButtonFormField<int>(
+              initialValue: _reincarnationCount,
+              decoration: const InputDecoration(
+                labelText: 'Reminders',
+                helperText: 'Extra alarms after the first one, so '
+                    'stopping it by accident does not let you oversleep',
+                helperMaxLines: 2,
+              ),
+              items: [
+                for (var count = 0; count <= maxReincarnationCount; count++)
+                  DropdownMenuItem(
+                    value: count,
+                    child: Text(count == 0
+                        ? 'Off'
+                        : count == 1
+                            ? '1 extra alarm'
+                            : '$count extra alarms'),
+                  ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _reincarnationCount = value!),
+            ),
+            if (_reincarnationCount > 0)
+              DropdownButtonFormField<int>(
+                initialValue: _reincarnationIntervalMinutes,
+                decoration: const InputDecoration(labelText: 'Spaced by'),
+                items: [
+                  for (final minutes in _intervalOptions)
+                    DropdownMenuItem(
+                      value: minutes,
+                      child: Text('$minutes min'),
+                    ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _reincarnationIntervalMinutes = value!),
+              ),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
               title: const Text('Sound and snooze'),
@@ -559,38 +597,6 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
                   ],
                   onChanged: (value) => setState(() => _snoozeMinutes = value!),
                 ),
-                DropdownButtonFormField<int>(
-                  initialValue: _reincarnationCount,
-                  decoration: const InputDecoration(
-                    labelText: 'Reminders after snoozing',
-                    helperText:
-                        'Extra rings after the snoozed ring, until dismissed',
-                  ),
-                  items: [
-                    for (var count = 0; count <= maxReincarnationCount; count++)
-                      DropdownMenuItem(
-                        value: count,
-                        child: Text(count == 0 ? 'None' : '$count'),
-                      ),
-                  ],
-                  onChanged: (value) =>
-                      setState(() => _reincarnationCount = value!),
-                ),
-                if (_reincarnationCount > 0)
-                  DropdownButtonFormField<int>(
-                    initialValue: _reincarnationIntervalMinutes,
-                    decoration:
-                        const InputDecoration(labelText: 'Reminder every'),
-                    items: [
-                      for (final minutes in _intervalOptions)
-                        DropdownMenuItem(
-                          value: minutes,
-                          child: Text('$minutes min'),
-                        ),
-                    ],
-                    onChanged: (value) =>
-                        setState(() => _reincarnationIntervalMinutes = value!),
-                  ),
                 const SizedBox(height: 8),
               ],
             ),

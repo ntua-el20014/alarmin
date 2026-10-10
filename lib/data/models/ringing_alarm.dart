@@ -8,6 +8,7 @@ class RingingAlarm {
     required this.title,
     this.alarm,
     this.canSnooze = false,
+    this.upcomingReminders = const [],
   });
 
   /// A ringing alarm that does not belong to a saved [AlarmModel], such as
@@ -20,6 +21,7 @@ class RingingAlarm {
         testAlarmNativeId => 'Test alarm',
         _ => 'Alarm',
       },
+      canSnooze: true,
     );
   }
 
@@ -27,4 +29,8 @@ class RingingAlarm {
   final String title;
   final AlarmModel? alarm;
   final bool canSnooze;
+
+  /// Reminder rings still scheduled after this one for the same occurrence.
+  /// Dismissing keeps them; only "turn off reminders" cancels them.
+  final List<DateTime> upcomingReminders;
 }

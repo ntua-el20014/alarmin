@@ -15,6 +15,13 @@ class CategoryRepository {
         .map((rows) => rows.map(_toModel).toList());
   }
 
+  Future<CategoryModel?> findById(String categoryId) async {
+    final row = await (_database.select(_database.categories)
+          ..where((category) => category.id.equals(categoryId)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
+  }
+
   Future<void> save(CategoryModel category) {
     // An upsert, not insertOrReplace: REPLACE deletes the row first, which
     // would clear the categoryId of every alarm in the category.

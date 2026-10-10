@@ -58,8 +58,8 @@ class ReincarnationRuns extends Table {
   IntColumn get remainingCount => integer()();
   DateTimeColumn get nextFireAt => dateTime()();
   IntColumn get status => integer()();
-  // Added in schema v2. A chain fires at firstFireAt + k * interval for
-  // k = 0..reincarnationCount. Null on legacy rows, which are treated as done.
+  // Added in schema v2: the reminder count and interval of the run, and the
+  // first reminder's time. Null on legacy rows, which are ignored.
   DateTimeColumn get firstFireAt => dateTime().nullable()();
   IntColumn get chainReincarnationCount => integer().nullable()();
   IntColumn get chainIntervalSeconds => integer().nullable()();
@@ -100,6 +100,8 @@ class AppSettingsTable extends Table {
   TextColumn get defaultRingtone => text()();
   IntColumn get defaultVibration => integer()();
   IntColumn get defaultSnoozeDurationSeconds => integer()();
+  // Added in schema v4; AppThemeMode index, 0 = dark.
+  IntColumn get themeMode => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -121,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -164,6 +166,15 @@ class AppDatabase extends _$AppDatabase {
               ),
             );
             await migrator.alterTable(TableMigration(stopwatchLaps));
+          }
+          if (from < 3) {
+            // Runs used to be snooze chains; they now hold the reminders of
+            // one occurrence. They are runtime state and get recreated.
+            await delete(reincarnationRuns).go();
+          }
+          if (from < 4) {
+            await migrator.addColumn(
+                appSettingsTable, appSettingsTable.themeMode);
           }
         },
         beforeOpen: (details) async {
