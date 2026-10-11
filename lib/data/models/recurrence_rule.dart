@@ -42,15 +42,27 @@ class RecurrenceRule {
     }
   }
 
-  DateTime _atTime(DateTime date) {
-    return DateTime(
-        date.year, date.month, date.day, timeOfDay ~/ 60, timeOfDay % 60);
+  // All day steps use calendar arithmetic (`DateTime(y, m, d + n)`), never
+  // `Duration(days: n)`: a Duration is a fixed 24 h, so across a daylight-
+  // saving change it lands an hour off, which made a 07:00 alarm ring at
+  // 06:00 and could return the same occurrence forever.
+
+  DateTime _atTime(DateTime date, [int addDays = 0]) {
+    return DateTime(date.year, date.month, date.day + addDays, timeOfDay ~/ 60,
+        timeOfDay % 60);
+  }
+
+  /// Whole calendar days from [from] to [to], ignoring clock changes.
+  static int _daysBetween(DateTime from, DateTime to) {
+    return DateTime.utc(to.year, to.month, to.day)
+        .difference(DateTime.utc(from.year, from.month, from.day))
+        .inDays;
   }
 
   DateTime? _nextDaily(DateTime after) {
     var candidate = _atTime(after);
     if (!candidate.isAfter(after)) {
-      candidate = candidate.add(const Duration(days: 1));
+      candidate = _atTime(after, 1);
     }
     return _withinEndDate(candidate);
   }
@@ -77,14 +89,12 @@ class RecurrenceRule {
       return _withinEndDate(_atTime(startDate));
     }
 
-    final daysSinceStart = afterDate.difference(startDate).inDays;
+    final daysSinceStart = _daysBetween(startDate, afterDate);
     var occurrenceIndex = daysSinceStart ~/ intervalDays!;
-    var candidate =
-        _atTime(startDate.add(Duration(days: occurrenceIndex * intervalDays!)));
+    var candidate = _atTime(startDate, occurrenceIndex * intervalDays!);
     if (!candidate.isAfter(after)) {
       occurrenceIndex++;
-      candidate = _atTime(
-          startDate.add(Duration(days: occurrenceIndex * intervalDays!)));
+      candidate = _atTime(startDate, occurrenceIndex * intervalDays!);
     }
     return _withinEndDate(candidate);
   }

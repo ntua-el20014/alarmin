@@ -25,8 +25,21 @@ import io.flutter.plugin.common.MethodChannel
  * observer.
  */
 class MainActivity : FlutterActivity() {
+    private companion object {
+        /** Notification channel of the alarm plugin (NotificationService). */
+        const val ALARM_CHANNEL_ID = "alarm_plugin_channel"
+    }
+
     private val ringingObserver = Observer<Boolean> { ringing ->
-        showOverLockScreen(ringing)
+        // On subscribe, LiveData replays its last value, which is the stale
+        // "false" of the previous alarm while a new one is starting. Only
+        // switch off when nothing is ringing; the ring screen also switches
+        // it off explicitly when it closes.
+        if (ringing) {
+            showOverLockScreen(true)
+        } else if (!isAlarmRinging()) {
+            showOverLockScreen(false)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +51,12 @@ class MainActivity : FlutterActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (isAlarmRinging()) showOverLockScreen(true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Opened by tapping the alarm notification on the lock screen.
         if (isAlarmRinging()) showOverLockScreen(true)
     }
 
@@ -66,9 +85,21 @@ class MainActivity : FlutterActivity() {
             }
     }
 
-    private fun isAlarmRinging(): Boolean =
-        AlarmService.ringingAlarmIds.isNotEmpty() ||
+    private fun isAlarmRinging(): Boolean {
+        if (AlarmService.ringingAlarmIds.isNotEmpty() ||
             AlarmRingingLiveData.instance.value == true
+        ) {
+            return true
+        }
+        // The plugin posts its notification (whose full-screen intent opens
+        // this activity) before it records the alarm as ringing, so on launch
+        // the notification is the only reliable sign.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        val manager = getSystemService(NotificationManager::class.java)
+        return manager.activeNotifications.any {
+            it.notification.channelId == ALARM_CHANNEL_ID
+        }
+    }
 
     private fun showOverLockScreen(show: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {

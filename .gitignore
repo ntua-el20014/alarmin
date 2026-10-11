@@ -43,3 +43,14 @@ app.*.map.json
 /android/app/release
 # Widget Preview related
 .widget_preview/
+
+# Build output and Gradle caches of the vendored plugin in packages/.
+# Gradle writes these next to the plugin sources when building the app.
+/packages/*/android/.gradle/
+/packages/*/android/build/
+/packages/*/build/
+/packages/*/.dart_tool/
+
+# JVM crash logs written by Gradle when the machine runs out of memory.
+hs_err_pid*.log
+replay_pid*.log

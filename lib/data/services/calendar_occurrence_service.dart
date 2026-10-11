@@ -10,12 +10,17 @@ class CalendarOccurrenceService {
     final end = _dateOnly(rangeEnd);
     final events = <DateTime, List<AlarmModel>>{};
 
+    final rangeLimit = DateTime(end.year, end.month, end.day + 1);
     for (final alarm in alarms.where((alarm) => alarm.isEnabled)) {
       var cursor = start.subtract(const Duration(minutes: 1));
-      while (true) {
+      // At most one occurrence per day; the cap and the "must move forward"
+      // check make sure a recurrence bug can never hang the UI again.
+      final maxSteps = end.difference(start).inDays + 3;
+      for (var step = 0; step < maxSteps; step++) {
         final occurrence = alarm.recurrence.nextOccurrenceAfter(cursor);
         if (occurrence == null ||
-            occurrence.isAfter(end.add(const Duration(days: 1)))) {
+            !occurrence.isAfter(cursor) ||
+            occurrence.isAfter(rangeLimit)) {
           break;
         }
         if (!occurrence.isBefore(start)) {
