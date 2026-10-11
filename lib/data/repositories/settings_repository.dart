@@ -49,6 +49,7 @@ class SettingsRepository {
       defaultSnoozeDuration:
           Duration(seconds: row.defaultSnoozeDurationSeconds),
       themeMode: AppThemeMode.values[row.themeMode],
+      timerRingtone: row.timerRingtone,
     );
   }
 
@@ -61,6 +62,7 @@ class SettingsRepository {
       defaultVibration: settings.defaultVibration.index,
       defaultSnoozeDurationSeconds: settings.defaultSnoozeDuration.inSeconds,
       themeMode: Value(settings.themeMode.index),
+      timerRingtone: Value(settings.timerRingtone),
     );
   }
 }

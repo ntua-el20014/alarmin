@@ -18,6 +18,7 @@ import '../data/services/alarm_scheduler.dart';
 import '../data/services/alarm_ring_handler.dart';
 import '../data/services/alarm_service.dart';
 import '../data/services/calendar_occurrence_service.dart';
+import '../data/services/sound_library.dart';
 import '../features/timer/timer_completion_service.dart';
 
 final databaseProvider = Provider<db.AppDatabase>((ref) {
@@ -98,7 +99,7 @@ final timerCompletionProvider = Provider<TimerCompletionNotifier>((ref) {
   return NativeTimerCompletionNotifier(
     ref.watch(alarmSchedulerProvider),
     () =>
-        ref.read(settingsProvider).value?.defaultRingtone ??
+        ref.read(settingsProvider).value?.effectiveTimerRingtone ??
         Ringtone.fallbackId,
   );
 });
@@ -118,4 +119,12 @@ final settingsProvider = StreamProvider<AppSettings>((ref) {
 final stopwatchHistoryProvider =
     StreamProvider<List<domain.StopwatchSession>>((ref) {
   return ref.watch(stopwatchRepositoryProvider).watchHistory();
+});
+
+final soundLibraryProvider = Provider<SoundLibrary>((ref) => SoundLibrary());
+
+/// Every sound alarms and the timer can use: built-in, bundled under
+/// `assets/audio/`, and imported from the device.
+final availableSoundsProvider = FutureProvider<List<Ringtone>>((ref) {
+  return ref.watch(soundLibraryProvider).available();
 });

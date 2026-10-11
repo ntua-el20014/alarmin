@@ -168,6 +168,7 @@ void main() {
         defaultRingtone: settings.defaultRingtone,
         defaultVibration: settings.defaultVibration,
         defaultSnoozeDuration: settings.defaultSnoozeDuration,
+        timerRingtone: 'digital',
       ),
     );
     await stopwatchRepository.saveCompletedSession(session, [
@@ -183,6 +184,7 @@ void main() {
 
     expect((await settingsRepository.load()).timePickerStyle,
         TimePickerStyle.cupertinoWheel);
+    expect((await settingsRepository.load()).timerRingtone, 'digital');
     expect(
         (await stopwatchRepository.watchHistory().first).single.id, session.id);
   });

@@ -36,4 +36,27 @@ void main() {
     expect(find.text('Timer'), findsNWidgets(2));
     expect(find.text('Alarms'), findsOneWidget);
   });
+
+  testWidgets('swiping moves to the neighbouring screen',
+      (WidgetTester tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          alarmsProvider.overrideWith((ref) => Stream.value([])),
+          categoriesProvider.overrideWith((ref) => Stream.value([])),
+          settingsProvider.overrideWith(
+            (ref) => Stream.value(const AppSettings.defaults()),
+          ),
+          stopwatchHistoryProvider.overrideWith((ref) => Stream.value([])),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    await tester.pump();
+
+    await tester.fling(find.byType(PageView), const Offset(-400, 0), 1500);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Calendar'), findsNWidgets(2));
+  });
 }

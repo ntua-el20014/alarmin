@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,6 +28,11 @@ class _RingScreenState extends ConsumerState<RingScreen> {
   /// The test alarm snoozes briefly so snoozing can be tried out quickly.
   static const _testSnooze = Duration(minutes: 1);
 
+  /// A button press that has not finished by then is treated as stuck: the
+  /// ring is stopped directly and the screen closes, so it can never trap
+  /// the user.
+  static const _actionTimeout = Duration(seconds: 8);
+
   late final ValueNotifier<RingingAlarm?> _ringing;
   bool _busy = false;
   bool _closing = false;
@@ -44,17 +51,39 @@ class _RingScreenState extends ConsumerState<RingScreen> {
   }
 
   void _closeWhenSilent() {
-    if (_ringing.value == null && !_closing && mounted) {
-      _closing = true;
-      Navigator.of(context).pop();
+    if (_ringing.value == null) _close();
+  }
+
+  /// Removes this screen's own route. A plain `pop()` would close whatever
+  /// is on top instead (for example a dialog opened over the ring screen),
+  /// leaving an empty ring screen that cannot be left.
+  void _close() {
+    if (_closing || !mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null) return;
+    _closing = true;
+    final navigator = Navigator.of(context);
+    if (route.isCurrent) {
+      navigator.pop();
+    } else if (route.isActive) {
+      navigator.removeRoute(route);
     }
   }
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
+    final ringing = _ringing.value;
     try {
-      await action();
+      await action().timeout(_actionTimeout);
+    } on TimeoutException {
+      if (ringing != null) {
+        unawaited(ref
+            .read(alarmSchedulerProvider)
+            .cancel(ringing.nativeId)
+            .catchError((Object _) {}));
+      }
+      if (_ringing.value?.nativeId == ringing?.nativeId) _ringing.value = null;
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)
@@ -77,7 +106,10 @@ class _RingScreenState extends ConsumerState<RingScreen> {
       after: ringing.nativeId == testAlarmNativeId
           ? _testSnooze
           : settings?.defaultSnoozeDuration ?? const Duration(minutes: 10),
-      ringtone: settings?.defaultRingtone ?? Ringtone.fallbackId,
+      ringtone: (ringing.nativeId == timerNativeId
+              ? settings?.effectiveTimerRingtone
+              : settings?.defaultRingtone) ??
+          Ringtone.fallbackId,
     );
   }
 
@@ -87,11 +119,16 @@ class _RingScreenState extends ConsumerState<RingScreen> {
     final testCategoryId = ref.watch(testAlarmCategoryProvider);
 
     return PopScope(
-      canPop: false,
+      // Back is blocked only while something is actually ringing.
+      canPop: _ringing.value == null,
       child: ValueListenableBuilder<RingingAlarm?>(
         valueListenable: _ringing,
         builder: (context, ringing, _) {
-          if (ringing == null) return const Scaffold();
+          if (ringing == null) {
+            // Opened or left over after the ring ended: close right away.
+            WidgetsBinding.instance.addPostFrameCallback((_) => _close());
+            return const Scaffold();
+          }
           return ValueListenableBuilder<String?>(
             valueListenable: testCategoryId,
             builder: (context, testCategory, _) {

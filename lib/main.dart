@@ -69,6 +69,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen>
     with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  final _pageController = PageController();
   late final ValueNotifier<RingingAlarm?> _ringing;
   bool _ringScreenOpen = false;
 
@@ -90,6 +91,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void dispose() {
     _ringing.removeListener(_showRingScreen);
     WidgetsBinding.instance.removeObserver(this);
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -123,7 +125,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _checkPermissions() async {
     final permissions = ref.read(alarmPermissionsProvider);
     await permissions.requestMissing();
-    if (await permissions.canWakeScreen() || !mounted) return;
+    // Never put a dialog over a ringing alarm.
+    if (await permissions.canWakeScreen() || !mounted || _ringScreenOpen) {
+      return;
+    }
     final open = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -162,16 +167,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     return Scaffold(
       appBar: AppBar(title: Text(selectedScreen.title)),
-      body: switch (_selectedIndex) {
-        0 => const AlarmsScreen(),
-        1 => const CalendarScreen(),
-        2 => const TimerScreen(),
-        3 => const StopwatchScreen(),
-        _ => const SettingsScreen(),
-      },
+      // Swipe left/right between the tabs. Horizontal drags inside a page
+      // (for example the calendar's week strip) still go to that page.
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: (index) => setState(() => _selectedIndex = index),
+        children: const [
+          AlarmsScreen(),
+          CalendarScreen(),
+          TimerScreen(),
+          StopwatchScreen(),
+          SettingsScreen(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: (index) {
+          setState(() => _selectedIndex = index);
+          // Jump rather than animate, so tapping a far tab does not flash
+          // through the pages in between.
+          _pageController.jumpToPage(index);
+        },
         type: BottomNavigationBarType.fixed,
         items: [
           for (final screen in _screens)

@@ -8,7 +8,8 @@ import '../../data/models/category_model.dart';
 import '../../data/models/ringtone.dart';
 import '../../data/services/alarm_permissions.dart';
 import '../../data/services/alarm_scheduler.dart';
-import 'emoji_input.dart';
+import '../categories/category_dialog.dart';
+import '../sounds/sound_picker.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -112,23 +113,29 @@ class _SettingsSection extends ConsumerWidget {
           onChanged: (value) =>
               _save(ref, settings.copyWith(isGroupedView: value)),
         ),
-        ListTile(
-          title: const Text('Default ringtone'),
-          subtitle: const Text('Also used by the timer'),
-          trailing: DropdownButton<String>(
-            value: Ringtone.resolve(settings.defaultRingtone).id,
-            items: [
-              for (final ringtone in Ringtone.all)
-                DropdownMenuItem(
-                  value: ringtone.id,
-                  child: Text(ringtone.label),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                _save(ref, settings.copyWith(defaultRingtone: value));
-              }
-            },
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SoundPicker(
+            label: 'Default alarm sound',
+            value: settings.defaultRingtone,
+            onChanged: (value) => _save(
+              ref,
+              settings.copyWith(defaultRingtone: value ?? Ringtone.fallbackId),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: SoundPicker(
+            label: 'Timer sound',
+            noneLabel: 'Same as default alarm sound',
+            value: settings.timerRingtone,
+            onChanged: (value) => _save(
+              ref,
+              value == null
+                  ? settings.copyWith(clearTimerRingtone: true)
+                  : settings.copyWith(timerRingtone: value),
+            ),
           ),
         ),
         SwitchListTile(
@@ -351,26 +358,8 @@ class _CategorySection extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref, [
     CategoryModel? category,
-  ]) async {
-    final result = await showDialog<(String, String)>(
-      context: context,
-      builder: (context) => _CategoryDialog(category: category),
-    );
-    if (result == null) return;
-    final now = DateTime.now();
-    await ref.read(categoryRepositoryProvider).save(
-          CategoryModel(
-            id: category?.id ?? 'category-${now.microsecondsSinceEpoch}',
-            name: result.$1,
-            emoji: result.$2,
-            createdAt: category?.createdAt ?? now,
-            updatedAt: now,
-          ),
-        );
-    // Scheduled notifications show the category emoji in their title.
-    if (category != null && category.emoji != result.$2) {
-      await ref.read(alarmServiceProvider).recover();
-    }
+  ]) {
+    return showCategoryEditor(context, ref, category: category);
   }
 
   Future<void> _deleteCategory(
@@ -397,113 +386,5 @@ class _CategorySection extends ConsumerWidget {
     if (confirmed == true) {
       await ref.read(categoryRepositoryProvider).delete(category.id);
     }
-  }
-}
-
-/// Owns its text controllers so they are disposed only after the dialog's
-/// closing animation, not while its fields are still on screen.
-class _CategoryDialog extends StatefulWidget {
-  const _CategoryDialog({this.category});
-
-  final CategoryModel? category;
-
-  @override
-  State<_CategoryDialog> createState() => _CategoryDialogState();
-}
-
-class _CategoryDialogState extends State<_CategoryDialog> {
-  late final TextEditingController _name =
-      TextEditingController(text: widget.category?.name ?? '');
-  late final TextEditingController _emoji =
-      TextEditingController(text: widget.category?.emoji ?? '🏷️');
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _emoji.dispose();
-    super.dispose();
-  }
-
-  String? _error;
-
-  void _submit() {
-    final name = _name.text.trim();
-    final emoji = _emoji.text.trim();
-    if (name.isEmpty) {
-      setState(() => _error = 'Enter a name.');
-      return;
-    }
-    if (!isSingleEmoji(emoji)) {
-      setState(() => _error = 'Pick one emoji.');
-      return;
-    }
-    Navigator.pop(context, (name, emoji));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.category == null ? 'Add category' : 'Edit category'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _name,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _emoji,
-              inputFormatters: [SingleEmojiFormatter()],
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 32),
-              decoration: const InputDecoration(
-                labelText: 'Emoji',
-                helperText: 'One emoji, from your emoji keyboard or below',
-              ),
-              onChanged: (_) => setState(() => _error = null),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                for (final emoji in suggestedCategoryEmoji)
-                  InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => setState(() {
-                      _emoji.text = emoji;
-                      _error = null;
-                    }),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Text(emoji, style: const TextStyle(fontSize: 26)),
-                    ),
-                  ),
-              ],
-            ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(onPressed: _submit, child: const Text('Save')),
-      ],
-    );
   }
 }

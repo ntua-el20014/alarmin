@@ -102,6 +102,8 @@ class AppSettingsTable extends Table {
   IntColumn get defaultSnoozeDurationSeconds => integer()();
   // Added in schema v4; AppThemeMode index, 0 = dark.
   IntColumn get themeMode => integer().withDefault(const Constant(0))();
+  // Added in schema v5; null means "same as defaultRingtone".
+  TextColumn get timerRingtone => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -123,7 +125,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -175,6 +177,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await migrator.addColumn(
                 appSettingsTable, appSettingsTable.themeMode);
+          }
+          if (from < 5) {
+            await migrator.addColumn(
+                appSettingsTable, appSettingsTable.timerRingtone);
           }
         },
         beforeOpen: (details) async {

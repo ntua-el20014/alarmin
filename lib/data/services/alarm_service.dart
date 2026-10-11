@@ -475,8 +475,12 @@ class AlarmService {
     return null;
   }
 
+  /// Upper bound for one queued operation. A native call that never returns
+  /// must not block every later alarm operation (and the ring screen).
+  static const _operationTimeout = Duration(seconds: 30);
+
   Future<T> _serialized<T>(Future<T> Function() action) {
-    final result = _tail.then((_) => action());
+    final result = _tail.then((_) => action().timeout(_operationTimeout));
     _tail = result.then<void>((_) {}, onError: (Object _) {});
     return result;
   }

@@ -14,6 +14,7 @@ class AppSettings {
     required this.defaultVibration,
     required this.defaultSnoozeDuration,
     this.themeMode = AppThemeMode.dark,
+    this.timerRingtone,
   });
 
   const AppSettings.defaults()
@@ -22,7 +23,8 @@ class AppSettings {
         defaultRingtone = Ringtone.fallbackId,
         defaultVibration = VibrationSetting.standard,
         defaultSnoozeDuration = const Duration(minutes: 10),
-        themeMode = AppThemeMode.dark;
+        themeMode = AppThemeMode.dark,
+        timerRingtone = null;
 
   final TimePickerStyle timePickerStyle;
   final bool isGroupedView;
@@ -31,6 +33,11 @@ class AppSettings {
   final Duration defaultSnoozeDuration;
   final AppThemeMode themeMode;
 
+  /// Sound for the timer; null means [defaultRingtone].
+  final String? timerRingtone;
+
+  String get effectiveTimerRingtone => timerRingtone ?? defaultRingtone;
+
   AppSettings copyWith({
     TimePickerStyle? timePickerStyle,
     bool? isGroupedView,
@@ -38,6 +45,8 @@ class AppSettings {
     VibrationSetting? defaultVibration,
     Duration? defaultSnoozeDuration,
     AppThemeMode? themeMode,
+    String? timerRingtone,
+    bool clearTimerRingtone = false,
   }) {
     return AppSettings(
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -47,6 +56,8 @@ class AppSettings {
       defaultSnoozeDuration:
           defaultSnoozeDuration ?? this.defaultSnoozeDuration,
       themeMode: themeMode ?? this.themeMode,
+      timerRingtone:
+          clearTimerRingtone ? null : timerRingtone ?? this.timerRingtone,
     );
   }
 }

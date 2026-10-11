@@ -98,6 +98,67 @@ void main() {
     });
   });
 
+  group('RingScreen closing', () {
+    Future<(ProviderContainer, GlobalKey<NavigatorState>)> pumpHome(
+      WidgetTester tester,
+    ) async {
+      final container = ProviderContainer(
+        overrides: [
+          categoriesProvider.overrideWith((ref) => Stream.value([])),
+          settingsProvider.overrideWith(
+            (ref) => Stream.value(const AppSettings.defaults()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            navigatorKey: navigator,
+            home: const Scaffold(body: Text('home')),
+          ),
+        ),
+      );
+      return (container, navigator);
+    }
+
+    testWidgets('closes its own route even when a dialog is on top',
+        (tester) async {
+      final (container, navigator) = await pumpHome(tester);
+      container.read(ringingAlarmProvider).value =
+          RingingAlarm.standalone(testAlarmNativeId);
+      navigator.currentState!
+          .push(MaterialPageRoute<void>(builder: (_) => const RingScreen()));
+      await tester.pump(const Duration(milliseconds: 500));
+      showDialog<void>(
+        context: navigator.currentContext!,
+        builder: (_) => const AlertDialog(content: Text('on top')),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      container.read(ringingAlarmProvider).value = null;
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(RingScreen), findsNothing);
+      expect(find.text('on top'), findsOneWidget);
+    });
+
+    testWidgets('closes itself if nothing is ringing when it opens',
+        (tester) async {
+      final (_, navigator) = await pumpHome(tester);
+
+      navigator.currentState!
+          .push(MaterialPageRoute<void>(builder: (_) => const RingScreen()));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.byType(RingScreen), findsNothing);
+      expect(find.text('home'), findsOneWidget);
+    });
+  });
+
   group('RingScreen', () {
     final category = CategoryModel(
       id: 'health',

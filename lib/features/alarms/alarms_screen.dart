@@ -9,6 +9,8 @@ import '../../data/models/category_model.dart';
 import '../../data/models/recurrence_rule.dart';
 import '../../data/models/ringtone.dart';
 import '../../data/services/alarm_service.dart';
+import '../categories/category_dialog.dart';
+import '../sounds/sound_picker.dart';
 import 'alarm_labels.dart';
 
 class AlarmsScreen extends ConsumerWidget {
@@ -49,6 +51,7 @@ Future<void> showAlarmEditor(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    showDragHandle: true,
     builder: (_) => _AlarmEditor(alarm: alarm, duplicate: duplicate),
   );
 }
@@ -314,6 +317,9 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
   late int _reincarnationIntervalMinutes;
   bool _saving = false;
   String? _error;
+  int _categoryFieldVersion = 0;
+
+  static const _newCategoryValue = '__new_category__';
 
   bool get _isEditing => widget.alarm != null && !widget.duplicate;
 
@@ -389,29 +395,22 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
       padding: EdgeInsets.only(
         left: 20,
         right: 20,
-        top: 20,
+        top: 0,
         bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _isEditing ? 'Edit alarm' : 'Add alarm',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
+            if (_isEditing)
+              Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  tooltip: 'Delete alarm',
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _saving ? null : _delete,
                 ),
-                if (_isEditing)
-                  IconButton(
-                    tooltip: 'Delete alarm',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: _saving ? null : _delete,
-                  ),
-              ],
-            ),
+              ),
             TextField(
               controller: _titleController,
               textCapitalization: TextCapitalization.sentences,
@@ -422,6 +421,10 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
+              // Re-created when the selection changes from outside (a new
+              // category), since the field only reads its initial value.
+              key: ValueKey(
+                  'category-$_categoryId-$knownCategory-$_categoryFieldVersion'),
               initialValue: knownCategory ? _categoryId : null,
               decoration: const InputDecoration(labelText: 'Category'),
               items: [
@@ -433,8 +436,24 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
                     child: Text('${category.emoji} ${category.name}'),
                   ),
                 ),
+                const DropdownMenuItem<String?>(
+                  value: _newCategoryValue,
+                  child: Row(
+                    children: [
+                      Icon(Icons.add, size: 20),
+                      SizedBox(width: 8),
+                      Text('New category…'),
+                    ],
+                  ),
+                ),
               ],
-              onChanged: (value) => setState(() => _categoryId = value),
+              onChanged: (value) {
+                if (value == _newCategoryValue) {
+                  _createCategory();
+                } else {
+                  setState(() => _categoryId = value);
+                }
+              },
             ),
             DropdownButtonFormField<AlarmScheduleType>(
               initialValue: _scheduleType,
@@ -566,17 +585,12 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
               tilePadding: EdgeInsets.zero,
               title: const Text('Sound and snooze'),
               children: [
-                DropdownButtonFormField<String>(
-                  initialValue: _ringtone,
-                  decoration: const InputDecoration(labelText: 'Ringtone'),
-                  items: [
-                    for (final ringtone in Ringtone.all)
-                      DropdownMenuItem(
-                        value: ringtone.id,
-                        child: Text(ringtone.label),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _ringtone = value!),
+                SoundPicker(
+                  label: 'Ringtone',
+                  value: _ringtone,
+                  onChanged: (value) => setState(
+                    () => _ringtone = value ?? Ringtone.fallbackId,
+                  ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -617,6 +631,16 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
         ),
       ),
     );
+  }
+
+  Future<void> _createCategory() async {
+    final created = await showCategoryEditor(context, ref);
+    if (!mounted) return;
+    setState(() {
+      if (created != null) _categoryId = created.id;
+      // Also resets the field if the dialog was cancelled.
+      _categoryFieldVersion++;
+    });
   }
 
   Future<void> _pickTime() async {

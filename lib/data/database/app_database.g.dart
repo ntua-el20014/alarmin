@@ -2741,6 +2741,12 @@ class $AppSettingsTableTable extends AppSettingsTable
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _timerRingtoneMeta =
+      const VerificationMeta('timerRingtone');
+  @override
+  late final GeneratedColumn<String> timerRingtone = GeneratedColumn<String>(
+      'timer_ringtone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2749,7 +2755,8 @@ class $AppSettingsTableTable extends AppSettingsTable
         defaultRingtone,
         defaultVibration,
         defaultSnoozeDurationSeconds,
-        themeMode
+        themeMode,
+        timerRingtone
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2810,6 +2817,12 @@ class $AppSettingsTableTable extends AppSettingsTable
       context.handle(_themeModeMeta,
           themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta));
     }
+    if (data.containsKey('timer_ringtone')) {
+      context.handle(
+          _timerRingtoneMeta,
+          timerRingtone.isAcceptableOrUnknown(
+              data['timer_ringtone']!, _timerRingtoneMeta));
+    }
     return context;
   }
 
@@ -2834,6 +2847,8 @@ class $AppSettingsTableTable extends AppSettingsTable
           data['${effectivePrefix}default_snooze_duration_seconds'])!,
       themeMode: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}theme_mode'])!,
+      timerRingtone: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}timer_ringtone']),
     );
   }
 
@@ -2852,6 +2867,7 @@ class AppSettingsTableData extends DataClass
   final int defaultVibration;
   final int defaultSnoozeDurationSeconds;
   final int themeMode;
+  final String? timerRingtone;
   const AppSettingsTableData(
       {required this.id,
       required this.timePickerStyle,
@@ -2859,7 +2875,8 @@ class AppSettingsTableData extends DataClass
       required this.defaultRingtone,
       required this.defaultVibration,
       required this.defaultSnoozeDurationSeconds,
-      required this.themeMode});
+      required this.themeMode,
+      this.timerRingtone});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2871,6 +2888,9 @@ class AppSettingsTableData extends DataClass
     map['default_snooze_duration_seconds'] =
         Variable<int>(defaultSnoozeDurationSeconds);
     map['theme_mode'] = Variable<int>(themeMode);
+    if (!nullToAbsent || timerRingtone != null) {
+      map['timer_ringtone'] = Variable<String>(timerRingtone);
+    }
     return map;
   }
 
@@ -2883,6 +2903,9 @@ class AppSettingsTableData extends DataClass
       defaultVibration: Value(defaultVibration),
       defaultSnoozeDurationSeconds: Value(defaultSnoozeDurationSeconds),
       themeMode: Value(themeMode),
+      timerRingtone: timerRingtone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timerRingtone),
     );
   }
 
@@ -2898,6 +2921,7 @@ class AppSettingsTableData extends DataClass
       defaultSnoozeDurationSeconds:
           serializer.fromJson<int>(json['defaultSnoozeDurationSeconds']),
       themeMode: serializer.fromJson<int>(json['themeMode']),
+      timerRingtone: serializer.fromJson<String?>(json['timerRingtone']),
     );
   }
   @override
@@ -2912,6 +2936,7 @@ class AppSettingsTableData extends DataClass
       'defaultSnoozeDurationSeconds':
           serializer.toJson<int>(defaultSnoozeDurationSeconds),
       'themeMode': serializer.toJson<int>(themeMode),
+      'timerRingtone': serializer.toJson<String?>(timerRingtone),
     };
   }
 
@@ -2922,7 +2947,8 @@ class AppSettingsTableData extends DataClass
           String? defaultRingtone,
           int? defaultVibration,
           int? defaultSnoozeDurationSeconds,
-          int? themeMode}) =>
+          int? themeMode,
+          Value<String?> timerRingtone = const Value.absent()}) =>
       AppSettingsTableData(
         id: id ?? this.id,
         timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -2932,6 +2958,8 @@ class AppSettingsTableData extends DataClass
         defaultSnoozeDurationSeconds:
             defaultSnoozeDurationSeconds ?? this.defaultSnoozeDurationSeconds,
         themeMode: themeMode ?? this.themeMode,
+        timerRingtone:
+            timerRingtone.present ? timerRingtone.value : this.timerRingtone,
       );
   AppSettingsTableData copyWithCompanion(AppSettingsTableCompanion data) {
     return AppSettingsTableData(
@@ -2952,6 +2980,9 @@ class AppSettingsTableData extends DataClass
           ? data.defaultSnoozeDurationSeconds.value
           : this.defaultSnoozeDurationSeconds,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      timerRingtone: data.timerRingtone.present
+          ? data.timerRingtone.value
+          : this.timerRingtone,
     );
   }
 
@@ -2965,7 +2996,8 @@ class AppSettingsTableData extends DataClass
           ..write('defaultVibration: $defaultVibration, ')
           ..write(
               'defaultSnoozeDurationSeconds: $defaultSnoozeDurationSeconds, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('timerRingtone: $timerRingtone')
           ..write(')'))
         .toString();
   }
@@ -2978,7 +3010,8 @@ class AppSettingsTableData extends DataClass
       defaultRingtone,
       defaultVibration,
       defaultSnoozeDurationSeconds,
-      themeMode);
+      themeMode,
+      timerRingtone);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2990,7 +3023,8 @@ class AppSettingsTableData extends DataClass
           other.defaultVibration == this.defaultVibration &&
           other.defaultSnoozeDurationSeconds ==
               this.defaultSnoozeDurationSeconds &&
-          other.themeMode == this.themeMode);
+          other.themeMode == this.themeMode &&
+          other.timerRingtone == this.timerRingtone);
 }
 
 class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
@@ -3001,6 +3035,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
   final Value<int> defaultVibration;
   final Value<int> defaultSnoozeDurationSeconds;
   final Value<int> themeMode;
+  final Value<String?> timerRingtone;
   const AppSettingsTableCompanion({
     this.id = const Value.absent(),
     this.timePickerStyle = const Value.absent(),
@@ -3009,6 +3044,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     this.defaultVibration = const Value.absent(),
     this.defaultSnoozeDurationSeconds = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.timerRingtone = const Value.absent(),
   });
   AppSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -3018,6 +3054,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     required int defaultVibration,
     required int defaultSnoozeDurationSeconds,
     this.themeMode = const Value.absent(),
+    this.timerRingtone = const Value.absent(),
   })  : timePickerStyle = Value(timePickerStyle),
         isGroupedView = Value(isGroupedView),
         defaultRingtone = Value(defaultRingtone),
@@ -3031,6 +3068,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     Expression<int>? defaultVibration,
     Expression<int>? defaultSnoozeDurationSeconds,
     Expression<int>? themeMode,
+    Expression<String>? timerRingtone,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3041,6 +3079,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       if (defaultSnoozeDurationSeconds != null)
         'default_snooze_duration_seconds': defaultSnoozeDurationSeconds,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (timerRingtone != null) 'timer_ringtone': timerRingtone,
     });
   }
 
@@ -3051,7 +3090,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       Value<String>? defaultRingtone,
       Value<int>? defaultVibration,
       Value<int>? defaultSnoozeDurationSeconds,
-      Value<int>? themeMode}) {
+      Value<int>? themeMode,
+      Value<String?>? timerRingtone}) {
     return AppSettingsTableCompanion(
       id: id ?? this.id,
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -3061,6 +3101,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       defaultSnoozeDurationSeconds:
           defaultSnoozeDurationSeconds ?? this.defaultSnoozeDurationSeconds,
       themeMode: themeMode ?? this.themeMode,
+      timerRingtone: timerRingtone ?? this.timerRingtone,
     );
   }
 
@@ -3089,6 +3130,9 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     if (themeMode.present) {
       map['theme_mode'] = Variable<int>(themeMode.value);
     }
+    if (timerRingtone.present) {
+      map['timer_ringtone'] = Variable<String>(timerRingtone.value);
+    }
     return map;
   }
 
@@ -3102,7 +3146,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
           ..write('defaultVibration: $defaultVibration, ')
           ..write(
               'defaultSnoozeDurationSeconds: $defaultSnoozeDurationSeconds, ')
-          ..write('themeMode: $themeMode')
+          ..write('themeMode: $themeMode, ')
+          ..write('timerRingtone: $timerRingtone')
           ..write(')'))
         .toString();
   }
@@ -5228,6 +5273,7 @@ typedef $$AppSettingsTableTableCreateCompanionBuilder
   required int defaultVibration,
   required int defaultSnoozeDurationSeconds,
   Value<int> themeMode,
+  Value<String?> timerRingtone,
 });
 typedef $$AppSettingsTableTableUpdateCompanionBuilder
     = AppSettingsTableCompanion Function({
@@ -5238,6 +5284,7 @@ typedef $$AppSettingsTableTableUpdateCompanionBuilder
   Value<int> defaultVibration,
   Value<int> defaultSnoozeDurationSeconds,
   Value<int> themeMode,
+  Value<String?> timerRingtone,
 });
 
 class $$AppSettingsTableTableFilterComposer
@@ -5273,6 +5320,9 @@ class $$AppSettingsTableTableFilterComposer
 
   ColumnFilters<int> get themeMode => $composableBuilder(
       column: $table.themeMode, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get timerRingtone => $composableBuilder(
+      column: $table.timerRingtone, builder: (column) => ColumnFilters(column));
 }
 
 class $$AppSettingsTableTableOrderingComposer
@@ -5309,6 +5359,10 @@ class $$AppSettingsTableTableOrderingComposer
 
   ColumnOrderings<int> get themeMode => $composableBuilder(
       column: $table.themeMode, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get timerRingtone => $composableBuilder(
+      column: $table.timerRingtone,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$AppSettingsTableTableAnnotationComposer
@@ -5340,6 +5394,9 @@ class $$AppSettingsTableTableAnnotationComposer
 
   GeneratedColumn<int> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumn<String> get timerRingtone => $composableBuilder(
+      column: $table.timerRingtone, builder: (column) => column);
 }
 
 class $$AppSettingsTableTableTableManager extends RootTableManager<
@@ -5377,6 +5434,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             Value<int> defaultVibration = const Value.absent(),
             Value<int> defaultSnoozeDurationSeconds = const Value.absent(),
             Value<int> themeMode = const Value.absent(),
+            Value<String?> timerRingtone = const Value.absent(),
           }) =>
               AppSettingsTableCompanion(
             id: id,
@@ -5386,6 +5444,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             defaultVibration: defaultVibration,
             defaultSnoozeDurationSeconds: defaultSnoozeDurationSeconds,
             themeMode: themeMode,
+            timerRingtone: timerRingtone,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5395,6 +5454,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             required int defaultVibration,
             required int defaultSnoozeDurationSeconds,
             Value<int> themeMode = const Value.absent(),
+            Value<String?> timerRingtone = const Value.absent(),
           }) =>
               AppSettingsTableCompanion.insert(
             id: id,
@@ -5404,6 +5464,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             defaultVibration: defaultVibration,
             defaultSnoozeDurationSeconds: defaultSnoozeDurationSeconds,
             themeMode: themeMode,
+            timerRingtone: timerRingtone,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

@@ -50,9 +50,10 @@ class EmojiPalette {
         (_renderSize - painter.height) / 2,
       ),
     );
+    final picture = recorder.endRecording();
     painter.dispose();
-    final image =
-        await recorder.endRecording().toImage(_renderSize, _renderSize);
+    final image = await picture.toImage(_renderSize, _renderSize);
+    picture.dispose();
     try {
       final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
       return bytes!.buffer.asUint8List();
