@@ -102,6 +102,16 @@ class AlarmPermissions {
     }
   }
 
+  /// Keeps the display on while the app is visible (the timer's sun button).
+  Future<void> keepScreenOn(bool keepOn) async {
+    if (!isSupported) return;
+    try {
+      await _channel.invokeMethod<void>('setKeepScreenOn', keepOn);
+    } on MissingPluginException {
+      // Not running in MainActivity (tests, other embedders).
+    }
+  }
+
   Future<void> requestBatteryOptimizationExemption() async {
     if (!isSupported) return;
     await Permission.ignoreBatteryOptimizations.request();

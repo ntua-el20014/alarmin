@@ -25,6 +25,9 @@ import io.flutter.plugin.common.MethodChannel
  * observer.
  */
 class MainActivity : FlutterActivity() {
+    /** Set from the timer's sun button; independent of a ringing alarm. */
+    private var keepScreenOnByUser = false
+
     private companion object {
         /** Notification channel of the alarm plugin (NotificationService). */
         const val ALARM_CHANNEL_ID = "alarm_plugin_channel"
@@ -76,6 +79,11 @@ class MainActivity : FlutterActivity() {
                         openFullScreenIntentSettings()
                         result.success(null)
                     }
+                    "setKeepScreenOn" -> {
+                        keepScreenOnByUser = call.arguments as? Boolean ?: false
+                        updateKeepScreenOn(ringing = isAlarmRinging())
+                        result.success(null)
+                    }
                     "setShowOverLockScreen" -> {
                         showOverLockScreen(call.arguments as? Boolean ?: false)
                         result.success(null)
@@ -111,7 +119,11 @@ class MainActivity : FlutterActivity() {
                 WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
             if (show) window.addFlags(flags) else window.clearFlags(flags)
         }
-        if (show) {
+        updateKeepScreenOn(ringing = show)
+    }
+
+    private fun updateKeepScreenOn(ringing: Boolean) {
+        if (ringing || keepScreenOnByUser) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

@@ -14,46 +14,33 @@ class StopwatchScreen extends ConsumerWidget {
     final controller = ref.read(stopwatchControllerProvider.notifier);
     final isRunning = state.status == domain.StopwatchSessionStatus.running;
     final hasSession = state.hasSession;
+    final isPaused = hasSession && !isRunning;
 
     return Column(
       children: [
-        const SizedBox(height: 24),
-        Text(
-          _formatDuration(state.elapsed),
-          style: Theme.of(context).textTheme.displayMedium,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+          child: Row(
+            children: [
+              const SizedBox(width: 48),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _formatDuration(state.elapsed),
+                    style: Theme.of(context).textTheme.displayMedium,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'History',
+                icon: const Icon(Icons.history),
+                onPressed: () => _showHistory(context),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            FilledButton.icon(
-              onPressed: isRunning ? controller.pause : controller.start,
-              icon: Icon(isRunning ? Icons.pause : Icons.play_arrow),
-              label: Text(isRunning
-                  ? 'Pause'
-                  : hasSession
-                      ? 'Resume'
-                      : 'Start'),
-            ),
-            const SizedBox(width: 8),
-            OutlinedButton.icon(
-              onPressed: hasSession ? controller.flag : null,
-              icon: const Icon(Icons.flag),
-              label: const Text('Flag'),
-            ),
-            const SizedBox(width: 8),
-            TextButton.icon(
-              onPressed: hasSession ? () => _finish(context, ref) : null,
-              icon: const Icon(Icons.save),
-              label: const Text('Finish'),
-            ),
-          ],
-        ),
-        TextButton.icon(
-          onPressed: hasSession ? controller.reset : null,
-          icon: const Icon(Icons.restart_alt),
-          label: const Text('Reset without saving'),
-        ),
+        const SizedBox(height: 8),
         Expanded(
           child: state.laps.isEmpty
               ? const Center(child: Text('No laps yet'))
@@ -69,14 +56,94 @@ class StopwatchScreen extends ConsumerWidget {
                   },
                 ),
         ),
-        TextButton.icon(
-          onPressed: () => _showHistory(context),
-          icon: const Icon(Icons.history),
-          label: const Text('History'),
+        // Big controls at the bottom, within thumb reach. Finish and Discard
+        // only exist while paused, so a running session cannot be ended by
+        // accident.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isPaused) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _BigButton(
+                        label: 'Discard',
+                        icon: Icons.delete_outline,
+                        style: _BigButtonStyle.text,
+                        onPressed: () => _confirmDiscard(context, ref),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _BigButton(
+                        label: 'Finish',
+                        icon: Icons.save,
+                        style: _BigButtonStyle.tonal,
+                        onPressed: () => _finish(context, ref),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
+              Row(
+                children: [
+                  if (hasSession) ...[
+                    Expanded(
+                      child: _BigButton(
+                        label: 'Flag',
+                        icon: Icons.flag,
+                        style: _BigButtonStyle.outlined,
+                        onPressed: controller.flag,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: _BigButton(
+                      label: isRunning
+                          ? 'Pause'
+                          : hasSession
+                              ? 'Resume'
+                              : 'Start',
+                      icon: isRunning ? Icons.pause : Icons.play_arrow,
+                      style: _BigButtonStyle.filled,
+                      onPressed:
+                          isRunning ? controller.pause : controller.start,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
       ],
     );
+  }
+
+  Future<void> _confirmDiscard(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard this run?'),
+        content: const Text('The time and laps will not be saved.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      ref.read(stopwatchControllerProvider.notifier).reset();
+    }
   }
 
   Future<void> _finish(BuildContext context, WidgetRef ref) async {
@@ -243,5 +310,59 @@ class _StopwatchHistorySheet extends ConsumerWidget {
     return hours > 0
         ? '$hours:$minutes:$seconds.$hundredths'
         : '$minutes:$seconds.$hundredths';
+  }
+}
+
+enum _BigButtonStyle { filled, tonal, outlined, text }
+
+class _BigButton extends StatelessWidget {
+  const _BigButton({
+    required this.label,
+    required this.icon,
+    required this.style,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final _BigButtonStyle style;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonStyle = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(64)),
+      textStyle:
+          WidgetStatePropertyAll(Theme.of(context).textTheme.titleMedium),
+      iconSize: const WidgetStatePropertyAll(26),
+    );
+    final iconWidget = Icon(icon);
+    final labelWidget = Text(label);
+    return switch (style) {
+      _BigButtonStyle.filled => FilledButton.icon(
+          style: buttonStyle,
+          onPressed: onPressed,
+          icon: iconWidget,
+          label: labelWidget,
+        ),
+      _BigButtonStyle.tonal => FilledButton.tonalIcon(
+          style: buttonStyle,
+          onPressed: onPressed,
+          icon: iconWidget,
+          label: labelWidget,
+        ),
+      _BigButtonStyle.outlined => OutlinedButton.icon(
+          style: buttonStyle,
+          onPressed: onPressed,
+          icon: iconWidget,
+          label: labelWidget,
+        ),
+      _BigButtonStyle.text => TextButton.icon(
+          style: buttonStyle,
+          onPressed: onPressed,
+          icon: iconWidget,
+          label: labelWidget,
+        ),
+    };
   }
 }

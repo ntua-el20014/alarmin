@@ -105,13 +105,6 @@ class _SettingsSection extends ConsumerWidget {
             },
           ),
         ),
-        SwitchListTile(
-          title: const Text('Grouped alarms'),
-          subtitle: const Text('Group alarms by category by default'),
-          value: settings.isGroupedView,
-          onChanged: (value) =>
-              _save(ref, settings.copyWith(isGroupedView: value)),
-        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SoundPicker(

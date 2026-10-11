@@ -135,3 +135,23 @@ class TimerController extends Notifier<TimerState> {
 
 final timerControllerProvider =
     NotifierProvider<TimerController, TimerState>(TimerController.new);
+
+/// Whether the display is kept on (the sun button on the timer screen).
+/// In memory only, like the timer itself.
+class KeepScreenOnController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void toggle() {
+    state = !state;
+    unawaited(ref
+        .read(alarmPermissionsProvider)
+        .keepScreenOn(state)
+        .catchError((Object error) {
+      debugPrint('Keep screen on failed: $error');
+    }));
+  }
+}
+
+final keepScreenOnProvider =
+    NotifierProvider<KeepScreenOnController, bool>(KeepScreenOnController.new);

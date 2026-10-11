@@ -80,19 +80,6 @@ class _AlarmList extends ConsumerWidget {
         Column(
           children: [
             const FullScreenAlarmBanner(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FilterChip(
-                  label: const Text('Group by category'),
-                  selected: settings.isGroupedView,
-                  onSelected: (value) => ref
-                      .read(settingsRepositoryProvider)
-                      .save(settings.copyWith(isGroupedView: value)),
-                ),
-              ),
-            ),
             Expanded(
               child: sorted.isEmpty
                   ? const Center(child: Text('No alarms yet'))
@@ -874,3 +861,32 @@ int _compareAlarms(AlarmModel a, AlarmModel b) {
 
 DateTime _dateOnly(DateTime value) =>
     DateTime(value.year, value.month, value.day);
+
+/// The ⋮ menu in the Alarms title bar.
+class AlarmsMenuButton extends ConsumerWidget {
+  const AlarmsMenuButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider).value;
+    final grouped = settings?.isGroupedView ?? false;
+    return PopupMenuButton<String>(
+      tooltip: 'More options',
+      enabled: settings != null,
+      onSelected: (value) {
+        if (value == 'group' && settings != null) {
+          ref
+              .read(settingsRepositoryProvider)
+              .save(settings.copyWith(isGroupedView: !grouped));
+        }
+      },
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem(
+          value: 'group',
+          checked: grouped,
+          child: const Text('Group by category'),
+        ),
+      ],
+    );
+  }
+}

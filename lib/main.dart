@@ -144,7 +144,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final selectedScreen = _screens[_selectedIndex];
 
     return Scaffold(
-      appBar: AppBar(title: Text(selectedScreen.title)),
+      appBar: AppBar(
+        title: Text(selectedScreen.title),
+        actions: [if (_selectedIndex == 0) const AlarmsMenuButton()],
+      ),
       // Swipe left/right between the tabs. Horizontal drags inside a page
       // (for example the calendar's week strip) still go to that page.
       body: PageView(

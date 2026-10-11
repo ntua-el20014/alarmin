@@ -18,11 +18,16 @@ class TimerScreen extends ConsumerWidget {
       child: Column(
         children: [
           Expanded(
-            child: Center(
-              child: Text(
-                _formatDuration(timer.remaining),
-                style: Theme.of(context).textTheme.displayMedium,
-              ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _formatDuration(timer.remaining),
+                  style: Theme.of(context).textTheme.displayMedium,
+                ),
+                const SizedBox(height: 8),
+                const _KeepScreenOnButton(),
+              ],
             ),
           ),
           IgnorePointer(
@@ -81,5 +86,35 @@ class TimerScreen extends ConsumerWidget {
     final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
     final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
     return '$hours:$minutes:$seconds';
+  }
+}
+
+/// Small sun toggle: filled while the screen is kept on.
+class _KeepScreenOnButton extends ConsumerWidget {
+  const _KeepScreenOnButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final keepOn = ref.watch(keepScreenOnProvider);
+    return IconButton(
+      tooltip: keepOn ? 'Screen stays on' : 'Keep screen on',
+      isSelected: keepOn,
+      icon: const Icon(Icons.wb_sunny_outlined),
+      selectedIcon: const Icon(Icons.wb_sunny),
+      onPressed: () {
+        ref.read(keepScreenOnProvider.notifier).toggle();
+        final nowOn = ref.read(keepScreenOnProvider);
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              duration: const Duration(seconds: 2),
+              content: Text(
+                nowOn ? 'Screen will stay on' : 'Screen can turn off again',
+              ),
+            ),
+          );
+      },
+    );
   }
 }
