@@ -7,6 +7,7 @@ import 'package:alarmin/data/models/recurrence_rule.dart';
 import 'package:alarmin/data/models/ringtone.dart';
 import 'package:alarmin/data/repositories/alarm_repository.dart';
 import 'package:alarmin/data/repositories/reincarnation_repository.dart';
+import 'package:alarmin/data/repositories/settings_repository.dart';
 import 'package:alarmin/data/services/alarm_scheduler.dart';
 import 'package:alarmin/data/services/alarm_service.dart';
 
@@ -57,6 +58,27 @@ void main() {
 
     final request = scheduler.scheduled.first;
     expect(Ringtone.resolve(request.ringtone), Ringtone.fallback);
+  });
+
+  test('an alarm on "Default" plays the Settings sound, others their own',
+      () async {
+    final settingsRepository = SettingsRepository(database);
+    await settingsRepository.save(
+      (await settingsRepository.load()).copyWith(defaultRingtone: 'gentle'),
+    );
+    final withSettings = AlarmService(
+      repository: repository,
+      reincarnationRepository: ReincarnationRepository(database),
+      settingsRepository: settingsRepository,
+      scheduler: scheduler,
+      now: () => now,
+    );
+
+    await withSettings.save(_alarm(ringtone: Ringtone.followDefault));
+    expect(scheduler.active[primaryNativeId('alarm-1')]?.ringtone, 'gentle');
+
+    await withSettings.save(_alarm(ringtone: 'digital'));
+    expect(scheduler.active[primaryNativeId('alarm-1')]?.ringtone, 'digital');
   });
 
   test('disabling an alarm cancels its native alarms', () async {

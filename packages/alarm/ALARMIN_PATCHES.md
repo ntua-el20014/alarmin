@@ -10,4 +10,10 @@ removed. Changes:
 - `android/.../services/VolumeService.kt`: volume control uses
   `STREAM_ALARM` instead of `STREAM_MUSIC`, to match.
 
+- `android/.../alarm/AlarmService.kt`: when an alarm starts it turns the
+  screen on (`SCREEN_BRIGHT_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP`) and, if the app
+  may draw over other apps, opens the app directly. This no longer relies on
+  Android honouring the full-screen intent, which Android 14+ downgrades to a
+  plain notification without the full-screen permission.
+
 Re-apply these if the plugin is upgraded.

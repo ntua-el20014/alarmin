@@ -5,6 +5,8 @@ import '../models/ringing_alarm.dart';
 import '../repositories/alarm_repository.dart';
 import '../repositories/category_repository.dart';
 import '../repositories/reincarnation_repository.dart';
+import '../repositories/settings_repository.dart';
+import '../models/ringtone.dart';
 import 'alarm_scheduler.dart';
 
 /// Upper bound for [AlarmModel.reincarnationCount] (reminders per
@@ -51,8 +53,10 @@ class AlarmService {
     required ReincarnationRepository reincarnationRepository,
     required AlarmScheduler scheduler,
     CategoryRepository? categoryRepository,
+    SettingsRepository? settingsRepository,
     DateTime Function()? now,
   })  : _repository = repository,
+        _settingsRepository = settingsRepository,
         _reincarnationRepository = reincarnationRepository,
         _categoryRepository = categoryRepository,
         _scheduler = scheduler,
@@ -65,6 +69,7 @@ class AlarmService {
   final AlarmRepository _repository;
   final ReincarnationRepository _reincarnationRepository;
   final CategoryRepository? _categoryRepository;
+  final SettingsRepository? _settingsRepository;
   final AlarmScheduler _scheduler;
   final DateTime Function() _now;
 
@@ -404,6 +409,13 @@ class AlarmService {
           reminderNativeId(alarmId, run.originOccurrenceAt, index),
       ];
 
+  /// The alarm's own sound, or the Settings default when it follows it.
+  Future<String> _ringtoneFor(AlarmModel alarm) async {
+    if (alarm.ringtone != Ringtone.followDefault) return alarm.ringtone;
+    final settings = await _settingsRepository?.load();
+    return settings?.defaultRingtone ?? Ringtone.fallbackId;
+  }
+
   Future<String> _notificationTitle(AlarmModel alarm) async {
     final categoryId = alarm.categoryId;
     final category = categoryId == null
@@ -435,7 +447,7 @@ class AlarmService {
         dateTime: dateTime,
         title: title ?? await _notificationTitle(alarm),
         body: body,
-        ringtone: alarm.ringtone,
+        ringtone: await _ringtoneFor(alarm),
         vibrate: alarm.vibration != VibrationSetting.off,
       ),
     );

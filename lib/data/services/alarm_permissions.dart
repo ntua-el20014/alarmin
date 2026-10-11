@@ -14,6 +14,7 @@ class AlarmPermissions {
   static const _channel = MethodChannel('alarmin/system');
 
   static const fullScreenLabel = 'Wake screen for alarms';
+  static const overlayLabel = 'Open alarm over other apps';
   static const batteryLabel = 'Ignore battery optimization';
 
   bool get isSupported => !kIsWeb && Platform.isAndroid;
@@ -38,8 +39,38 @@ class AlarmPermissions {
       'Notifications': await Permission.notification.isGranted,
       'Exact alarms': await Permission.scheduleExactAlarm.isGranted,
       fullScreenLabel: await canWakeScreen(),
+      overlayLabel: await Permission.systemAlertWindow.isGranted,
       batteryLabel: await Permission.ignoreBatteryOptimizations.isGranted,
     };
+  }
+
+  /// The permissions a ringing alarm needs to take over the screen (like the
+  /// Clock app) that are still missing, by label. Empty when all is set.
+  Future<List<String>> missingForFullScreenAlarm() async {
+    if (!isSupported) return const [];
+    return [
+      if (!await Permission.notification.isGranted) 'Notifications',
+      if (!await canWakeScreen()) fullScreenLabel,
+      if (!await Permission.systemAlertWindow.isGranted) overlayLabel,
+    ];
+  }
+
+  /// Opens the system page (or prompt) that grants the permission [label].
+  Future<void> request(String label) async {
+    if (!isSupported) return;
+    switch (label) {
+      case fullScreenLabel:
+        await openWakeScreenSettings();
+      case overlayLabel:
+        await Permission.systemAlertWindow.request();
+      case batteryLabel:
+        await Permission.ignoreBatteryOptimizations.request();
+      case 'Notifications':
+        final status = await Permission.notification.request();
+        if (status.isPermanentlyDenied) await openAppSettings();
+      default:
+        await openAppSettings();
+    }
   }
 
   /// Whether a ringing alarm may turn the screen on over the lock screen.

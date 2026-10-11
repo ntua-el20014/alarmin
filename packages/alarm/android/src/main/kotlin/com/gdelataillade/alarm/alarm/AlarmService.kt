@@ -17,6 +17,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Build
+import android.provider.Settings
 import com.gdelataillade.alarm.services.AlarmRingingLiveData
 import com.gdelataillade.alarm.services.NotificationHandler
 import io.flutter.Log
@@ -109,6 +110,11 @@ class AlarmService : Service() {
 
         if (fullScreenIntent) {
             AlarmRingingLiveData.instance.update(true)
+            // Alarmin patch: do not depend on Android honouring the full-screen
+            // intent (on Android 14+ it is downgraded to a plain notification
+            // without the full-screen permission, and some OEMs block it).
+            wakeScreen()
+            appIntent?.let { openApp(it) }
         }
 
         // Proceed with handling the new alarm
@@ -158,6 +164,46 @@ class AlarmService : Service() {
         wakeLock.acquire(5 * 60 * 1000L) // Acquire for 5 minutes
 
         return START_STICKY
+    }
+
+    /** Alarmin patch: turns the display on, like the Clock app. */
+    private fun wakeScreen() {
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            val screenLock = powerManager.newWakeLock(
+                PowerManager.SCREEN_BRIGHT_WAKE_LOCK or
+                    PowerManager.ACQUIRE_CAUSES_WAKEUP or
+                    PowerManager.ON_AFTER_RELEASE,
+                "alarmin:AlarmScreenOn"
+            )
+            screenLock.acquire(10 * 1000L)
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Could not wake the screen: ${e.message}")
+        }
+    }
+
+    /**
+     * Alarmin patch: opens the app (which shows its ring screen over the lock
+     * screen) directly. Android only allows this from the background when the
+     * app may draw over other apps; otherwise the full-screen intent and the
+     * notification remain the way in.
+     */
+    private fun openApp(appIntent: Intent) {
+        val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            Settings.canDrawOverlays(this)
+        if (!allowed) return
+        try {
+            startActivity(
+                Intent(appIntent).addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                )
+            )
+        } catch (e: Exception) {
+            Log.e("AlarmService", "Could not open the app: ${e.message}")
+        }
     }
 
     private fun startAlarmService(id: Int, notification: Notification) {

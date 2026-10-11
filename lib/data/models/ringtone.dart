@@ -30,6 +30,10 @@ class Ringtone {
   static const fallback = classic;
   static const fallbackId = 'classic';
 
+  /// Stored on an alarm that plays the default sound from Settings, looked
+  /// up when the alarm is scheduled.
+  static const followDefault = 'default';
+
   static const audioFolder = 'assets/audio/';
   static const audioExtensions = {'.mp3', '.wav', '.ogg', '.m4a', '.aac'};
 

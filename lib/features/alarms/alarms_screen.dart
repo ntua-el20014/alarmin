@@ -12,6 +12,7 @@ import '../../data/services/alarm_service.dart';
 import '../categories/category_dialog.dart';
 import '../sounds/sound_picker.dart';
 import 'alarm_labels.dart';
+import 'full_screen_alarm_banner.dart';
 
 class AlarmsScreen extends ConsumerWidget {
   const AlarmsScreen({super.key});
@@ -78,6 +79,7 @@ class _AlarmList extends ConsumerWidget {
       children: [
         Column(
           children: [
+            const FullScreenAlarmBanner(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Align(
@@ -354,8 +356,8 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
     _categoryId = alarm?.categoryId;
     _isEnabled = alarm?.isEnabled ?? true;
     _deleteAfterUse = alarm?.deleteAfterUse ?? false;
-    _ringtone =
-        Ringtone.resolve(alarm?.ringtone ?? settings.defaultRingtone).id;
+    // New alarms follow the Settings default until a sound is picked.
+    _ringtone = alarm?.ringtone ?? Ringtone.followDefault;
     _vibration = alarm?.vibration ?? settings.defaultVibration;
     _snoozeMinutes = _nearest(
       (alarm?.snoozeDuration ?? settings.defaultSnoozeDuration).inMinutes,
@@ -386,6 +388,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final defaultSound = ref.watch(settingsProvider).value?.defaultRingtone;
     final categories = ref.watch(categoriesProvider).value ?? const [];
     final knownCategory =
         categories.any((category) => category.id == _categoryId);
@@ -586,10 +589,12 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
               title: const Text('Sound and snooze'),
               children: [
                 SoundPicker(
-                  label: 'Ringtone',
-                  value: _ringtone,
+                  label: 'Sound',
+                  noneLabel:
+                      'Default (${Ringtone.resolve(defaultSound).label})',
+                  value: _ringtone == Ringtone.followDefault ? null : _ringtone,
                   onChanged: (value) => setState(
-                    () => _ringtone = value ?? Ringtone.fallbackId,
+                    () => _ringtone = value ?? Ringtone.followDefault,
                   ),
                 ),
                 SwitchListTile(

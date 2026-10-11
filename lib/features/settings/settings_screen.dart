@@ -6,7 +6,6 @@ import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/ringtone.dart';
-import '../../data/services/alarm_permissions.dart';
 import '../../data/services/alarm_scheduler.dart';
 import '../categories/category_dialog.dart';
 import '../sounds/sound_picker.dart';
@@ -118,10 +117,16 @@ class _SettingsSection extends ConsumerWidget {
           child: SoundPicker(
             label: 'Default alarm sound',
             value: settings.defaultRingtone,
-            onChanged: (value) => _save(
-              ref,
-              settings.copyWith(defaultRingtone: value ?? Ringtone.fallbackId),
-            ),
+            onChanged: (value) async {
+              await _save(
+                ref,
+                settings.copyWith(
+                  defaultRingtone: value ?? Ringtone.fallbackId,
+                ),
+              );
+              // Alarms set to "Default" pick up the new sound.
+              await ref.read(alarmServiceProvider).recover();
+            },
           ),
         ),
         Padding(
@@ -235,13 +240,7 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
             onTap: entry.value
                 ? null
                 : () async {
-                    if (entry.key == AlarmPermissions.batteryLabel) {
-                      await permissions.requestBatteryOptimizationExemption();
-                    } else if (entry.key == AlarmPermissions.fullScreenLabel) {
-                      await permissions.openWakeScreenSettings();
-                    } else {
-                      await permissions.openSystemSettings();
-                    }
+                    await permissions.request(entry.key);
                     await _refresh();
                   },
           ),

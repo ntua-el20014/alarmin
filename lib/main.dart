@@ -98,6 +98,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      // Back from a system settings page: re-check the permissions.
+      ref.invalidate(fullScreenAlarmIssuesProvider);
       unawaited(ref.read(alarmServiceProvider).recover().catchError(
             (Object error) => debugPrint('Alarm recovery failed: $error'),
           ));
@@ -123,34 +125,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Future<void> _checkPermissions() async {
-    final permissions = ref.read(alarmPermissionsProvider);
-    await permissions.requestMissing();
-    // Never put a dialog over a ringing alarm.
-    if (await permissions.canWakeScreen() || !mounted || _ringScreenOpen) {
-      return;
-    }
-    final open = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Let alarms wake the screen'),
-        content: const Text(
-          'Android needs the "full-screen notifications" permission to turn '
-          'the screen on and show the alarm over the lock screen. Without it '
-          'you only get a notification.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Later'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Open settings'),
-          ),
-        ],
-      ),
-    );
-    if (open == true) await permissions.openWakeScreenSettings();
+    await ref.read(alarmPermissionsProvider).requestMissing();
+    // Whatever is still missing for full-screen alarms is shown as a banner
+    // on the Alarms tab (never as a dialog over a ringing alarm).
+    ref.invalidate(fullScreenAlarmIssuesProvider);
   }
 
   static const _screens = <_AppScreen>[

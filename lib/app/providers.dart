@@ -57,6 +57,7 @@ final alarmServiceProvider = Provider<AlarmService>((ref) {
     repository: ref.watch(alarmRepositoryProvider),
     reincarnationRepository: ref.watch(reincarnationRepositoryProvider),
     categoryRepository: ref.watch(categoryRepositoryProvider),
+    settingsRepository: ref.watch(settingsRepositoryProvider),
     scheduler: ref.watch(alarmSchedulerProvider),
   );
 });
@@ -88,6 +89,12 @@ final alarmRingHandlerProvider = Provider<AlarmRingHandler>((ref) {
 
 final alarmPermissionsProvider = Provider<AlarmPermissions>((ref) {
   return AlarmPermissions();
+});
+
+/// Permissions still missing for alarms to wake the screen and show over
+/// the lock screen. Invalidate to re-check (e.g. on app resume).
+final fullScreenAlarmIssuesProvider = FutureProvider<List<String>>((ref) {
+  return ref.watch(alarmPermissionsProvider).missingForFullScreenAlarm();
 });
 
 final calendarOccurrenceServiceProvider =
