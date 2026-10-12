@@ -1,10 +1,13 @@
 package com.example.alarmin
 
+import android.app.AppOpsManager
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Process
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.lifecycle.Observer
@@ -31,6 +34,18 @@ class MainActivity : FlutterActivity() {
     private companion object {
         /** Notification channel of the alarm plugin (NotificationService). */
         const val ALARM_CHANNEL_ID = "alarm_plugin_channel"
+
+        /**
+         * MIUI/HyperOS app ops behind "Show on lock screen" and "Display
+         * pop-up windows while running in the background". Not public API,
+         * but stable across MIUI versions.
+         */
+        const val MIUI_OP_SHOW_WHEN_LOCKED = 10020
+        const val MIUI_OP_BACKGROUND_START_ACTIVITY = 10021
+
+        /** Makers whose own lock screen setting blocks alarms, unreadable. */
+        val UNVERIFIABLE_LOCK_SCREEN_MAKERS =
+            setOf("vivo", "oppo", "realme", "huawei", "honor")
     }
 
     private val ringingObserver = Observer<Boolean> { ringing ->
@@ -77,6 +92,11 @@ class MainActivity : FlutterActivity() {
                     "canUseFullScreenIntent" -> result.success(canUseFullScreenIntent())
                     "openFullScreenIntentSettings" -> {
                         openFullScreenIntentSettings()
+                        result.success(null)
+                    }
+                    "lockScreenPermission" -> result.success(lockScreenPermission())
+                    "openLockScreenPermissionSettings" -> {
+                        openLockScreenPermissionSettings()
                         result.success(null)
                     }
                     "setKeepScreenOn" -> {
@@ -146,5 +166,71 @@ class MainActivity : FlutterActivity() {
                 .setData(Uri.parse("package:$packageName"))
         }
         startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private fun isXiaomi(): Boolean =
+        Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
+
+    /**
+     * Some makers add their own "show on lock screen" setting on top of
+     * Android's, and while it is off the alarm only shows as a notification.
+     * Returns "granted" or "denied" where it can be read (Xiaomi), "unknown"
+     * where it exists but cannot be read, and "notNeeded" elsewhere.
+     */
+    private fun lockScreenPermission(): String {
+        if (isXiaomi()) {
+            val allowed = miuiOpAllowed(MIUI_OP_SHOW_WHEN_LOCKED) ?: return "unknown"
+            val popups = miuiOpAllowed(MIUI_OP_BACKGROUND_START_ACTIVITY) ?: return "unknown"
+            return if (allowed && popups) "granted" else "denied"
+        }
+        val maker = Build.MANUFACTURER.lowercase()
+        return if (maker in UNVERIFIABLE_LOCK_SCREEN_MAKERS) "unknown" else "notNeeded"
+    }
+
+    private fun miuiOpAllowed(op: Int): Boolean? = try {
+        val manager = getSystemService(AppOpsManager::class.java)
+        val check = AppOpsManager::class.java.getMethod(
+            "checkOpNoThrow",
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+            String::class.java,
+        )
+        check.invoke(manager, op, Process.myUid(), packageName) as Int ==
+            AppOpsManager.MODE_ALLOWED
+    } catch (e: Exception) {
+        null
+    }
+
+    /** The maker's permission page for this app, or App info as a fallback. */
+    private fun openLockScreenPermissionSettings() {
+        val candidates = mutableListOf<Intent>()
+        if (isXiaomi()) {
+            for (activity in listOf(
+                "com.miui.permcenter.permissions.PermissionsEditorActivity",
+                "com.miui.permcenter.permissions.AppPermissionsEditorActivity",
+            )) {
+                candidates += Intent("miui.intent.action.APP_PERM_EDITOR")
+                    .setClassName("com.miui.securitycenter", activity)
+                    .putExtra("extra_pkgname", packageName)
+            }
+        }
+        if (Build.MANUFACTURER.equals("vivo", ignoreCase = true)) {
+            candidates += Intent().setClassName(
+                "com.vivo.permissionmanager",
+                "com.vivo.permissionmanager.activity.SoftPermissionDetailActivity",
+            ).putExtra("packagename", packageName)
+        }
+        candidates += Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+            .setData(Uri.parse("package:$packageName"))
+        for (intent in candidates) {
+            try {
+                startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (e: ActivityNotFoundException) {
+                // Try the next page.
+            } catch (e: SecurityException) {
+                // Not exported on this OS version; try the next page.
+            }
+        }
     }
 }

@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Runtime permissions and window behavior alarms need to ring visibly.
 ///
@@ -16,6 +17,11 @@ class AlarmPermissions {
   static const fullScreenLabel = 'Wake screen for alarms';
   static const overlayLabel = 'Open alarm over other apps';
   static const batteryLabel = 'Ignore battery optimization';
+  static const lockScreenLabel = 'Show on lock screen';
+
+  /// Set once the user opened the maker's permission page on phones where
+  /// the lock screen setting cannot be read back.
+  static const _lockScreenOpenedKey = 'lockScreenSettingsOpened';
 
   bool get isSupported => !kIsWeb && Platform.isAndroid;
 
@@ -41,6 +47,8 @@ class AlarmPermissions {
       fullScreenLabel: await canWakeScreen(),
       overlayLabel: await Permission.systemAlertWindow.isGranted,
       batteryLabel: await Permission.ignoreBatteryOptimizations.isGranted,
+      if (await canShowOnLockScreen() case final allowed?)
+        lockScreenLabel: allowed,
     };
   }
 
@@ -52,6 +60,7 @@ class AlarmPermissions {
       if (!await Permission.notification.isGranted) 'Notifications',
       if (!await canWakeScreen()) fullScreenLabel,
       if (!await Permission.systemAlertWindow.isGranted) overlayLabel,
+      if (await canShowOnLockScreen() == false) lockScreenLabel,
     ];
   }
 
@@ -63,6 +72,8 @@ class AlarmPermissions {
         await openWakeScreenSettings();
       case overlayLabel:
         await Permission.systemAlertWindow.request();
+      case lockScreenLabel:
+        await openLockScreenSettings();
       case batteryLabel:
         await Permission.ignoreBatteryOptimizations.request();
       case 'Notifications':
@@ -89,6 +100,40 @@ class AlarmPermissions {
   Future<void> openWakeScreenSettings() async {
     if (!isSupported) return;
     await _channel.invokeMethod<void>('openFullScreenIntentSettings');
+  }
+
+  /// Whether the phone maker's own lock screen setting (Xiaomi, vivo, OPPO,
+  /// Huawei...) lets alarms open over the lock screen; null on phones that
+  /// have no such setting. Where it cannot be read back, it counts as
+  /// allowed once the user has opened its page.
+  Future<bool?> canShowOnLockScreen() async {
+    if (!isSupported) return null;
+    final String? state;
+    try {
+      state = await _channel.invokeMethod<String>('lockScreenPermission');
+    } on PlatformException {
+      return null;
+    } on MissingPluginException {
+      return null;
+    }
+    switch (state) {
+      case 'granted':
+        return true;
+      case 'denied':
+        return false;
+      case 'unknown':
+        final prefs = await SharedPreferences.getInstance();
+        return prefs.getBool(_lockScreenOpenedKey) ?? false;
+      default:
+        return null;
+    }
+  }
+
+  Future<void> openLockScreenSettings() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod<void>('openLockScreenPermissionSettings');
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_lockScreenOpenedKey, true);
   }
 
   /// Keeps the app visible over the lock screen, with the display on, while

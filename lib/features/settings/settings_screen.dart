@@ -6,6 +6,7 @@ import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
 import '../../data/models/ringtone.dart';
+import '../../data/services/alarm_permissions.dart';
 import '../../data/services/alarm_scheduler.dart';
 import '../categories/category_dialog.dart';
 import '../sounds/sound_picker.dart';
@@ -230,7 +231,9 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
             ),
             title: Text(entry.key),
             subtitle: Text(entry.value ? 'Allowed' : 'Not allowed'),
-            onTap: entry.value
+            // The lock screen setting may not be readable back, so its page
+            // stays one tap away.
+            onTap: entry.value && entry.key != AlarmPermissions.lockScreenLabel
                 ? null
                 : () async {
                     await permissions.request(entry.key);

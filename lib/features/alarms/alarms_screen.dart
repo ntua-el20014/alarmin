@@ -169,7 +169,12 @@ class _GroupedAlarmList extends StatelessWidget {
             ),
           ),
           for (final alarm in grouped[key]!)
-            _AlarmTile(alarm: alarm, category: categoryById[alarm.categoryId]),
+            // The group header already shows the category's emoji.
+            _AlarmTile(
+              alarm: alarm,
+              category: categoryById[alarm.categoryId],
+              showEmoji: false,
+            ),
         ],
       ],
     );
@@ -177,18 +182,24 @@ class _GroupedAlarmList extends StatelessWidget {
 }
 
 class _AlarmTile extends ConsumerWidget {
-  const _AlarmTile({required this.alarm, required this.category});
+  const _AlarmTile({
+    required this.alarm,
+    required this.category,
+    this.showEmoji = true,
+  });
 
   final AlarmModel alarm;
   final CategoryModel? category;
+  final bool showEmoji;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final muted = !alarm.isEnabled;
     return ListTile(
-      leading:
-          Text(category?.emoji ?? '⏰', style: const TextStyle(fontSize: 24)),
+      leading: showEmoji
+          ? Text(category?.emoji ?? '⏰', style: const TextStyle(fontSize: 24))
+          : null,
       title: Text(
         formatTimeOfDayMinutes(context, alarm.recurrence.timeOfDay),
         style: theme.textTheme.headlineSmall?.copyWith(

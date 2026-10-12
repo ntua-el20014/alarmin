@@ -31,12 +31,30 @@ Future<void> main() async {
       debugPrint('Alarm recovery failed: $error\n$stackTrace');
     }),
   );
+  unawaited(
+    _removeUnusedSounds(container).catchError((Object error) {
+      debugPrint('Sound cleanup failed: $error');
+    }),
+  );
   runApp(
     UncontrolledProviderScope(
       container: container,
       child: const MyApp(),
     ),
   );
+}
+
+/// Deletes imported sound files no alarm or setting uses any more, so
+/// replaced or deleted songs do not keep taking up storage.
+Future<void> _removeUnusedSounds(ProviderContainer container) async {
+  final alarms = await container.read(alarmRepositoryProvider).getAll();
+  final settings = await container.read(settingsRepositoryProvider).load();
+  final inUse = {
+    for (final alarm in alarms) alarm.ringtone,
+    settings.defaultRingtone,
+    if (settings.timerRingtone != null) settings.timerRingtone!,
+  };
+  await container.read(soundLibraryProvider).removeUnused(inUse);
 }
 
 final _navigatorKey = GlobalKey<NavigatorState>();

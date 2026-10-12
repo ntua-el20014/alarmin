@@ -59,6 +59,10 @@ class _FixList extends ConsumerWidget {
     AlarmPermissions.overlayLabel:
         'Android calls this "display over other apps". Opens the alarm '
             'screen even when Android ignores the full-screen notification.',
+    AlarmPermissions.lockScreenLabel:
+        'Your phone adds its own setting for this. On the page that opens, '
+            'allow "Show on lock screen" and "Display pop-up windows while '
+            'running in the background" (or similar).',
   };
 
   @override
