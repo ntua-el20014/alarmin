@@ -12,40 +12,166 @@ import '../../data/services/alarm_scheduler.dart';
 import '../categories/category_dialog.dart';
 import '../sounds/sound_picker.dart';
 
+/// The Settings tab: a menu of categories, each opening its own page.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(settingsProvider);
-    final categories = ref.watch(categoriesProvider);
+    final issues = ref.watch(fullScreenAlarmIssuesProvider).value ?? const [];
+    final categoryCount = ref.watch(categoriesProvider).value?.length;
 
     return ListView(
       children: [
-        settings.when(
-          data: (value) => _SettingsSection(settings: value),
-          loading: () => const ListTile(
-            title: Text('Loading settings...'),
-            leading: CircularProgressIndicator(),
+        _MenuTile(
+          icon: Icons.palette_outlined,
+          title: 'Appearance',
+          subtitle: 'Theme and time picker',
+          page: _SettingsPage(
+            title: 'Appearance',
+            child: _WithSettings(
+              builder: (settings) => _AppearanceSection(settings: settings),
+            ),
           ),
-          error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
         ),
-        const Divider(),
-        const _SectionTitle('Alarm reliability'),
-        const _ReliabilitySection(),
-        const Divider(),
-        const _SectionTitle('Categories'),
-        categories.when(
-          data: (items) => _CategorySection(categories: items),
-          loading: () => const ListTile(title: Text('Loading categories...')),
-          error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
+        _MenuTile(
+          icon: Icons.alarm,
+          title: 'Alarms',
+          subtitle: 'Vibration, snooze and upcoming alarm notice',
+          page: _SettingsPage(
+            title: 'Alarms',
+            child: _WithSettings(
+              builder: (settings) => _AlarmDefaultsSection(settings: settings),
+            ),
+          ),
         ),
-        const Divider(),
-        const _SectionTitle('About'),
-        const _AboutSection(),
+        _MenuTile(
+          icon: Icons.music_note_outlined,
+          title: 'Sounds',
+          subtitle: 'Default alarm sound and timer sound',
+          page: _SettingsPage(
+            title: 'Sounds',
+            child: _WithSettings(
+              builder: (settings) => _SoundsSection(settings: settings),
+            ),
+          ),
+        ),
+        _MenuTile(
+          icon: Icons.label_outline,
+          title: 'Categories',
+          subtitle: switch (categoryCount) {
+            null => 'Group alarms with an emoji',
+            1 => '1 category',
+            final count => '$count categories',
+          },
+          page: const _SettingsPage(
+            title: 'Categories',
+            child: _CategoriesPage(),
+          ),
+        ),
+        _MenuTile(
+          icon: issues.isEmpty
+              ? Icons.verified_user_outlined
+              : Icons.warning_amber_rounded,
+          iconColor:
+              issues.isEmpty ? null : Theme.of(context).colorScheme.error,
+          title: 'Permissions and test',
+          subtitle: switch (issues.length) {
+            0 => 'Check that alarms ring and wake the screen',
+            1 => '1 setting needs attention',
+            final count => '$count settings need attention',
+          },
+          page: const _SettingsPage(
+            title: 'Permissions and test',
+            child: _ReliabilitySection(),
+          ),
+        ),
+        const _MenuTile(
+          icon: Icons.info_outline,
+          title: 'About',
+          subtitle: 'Privacy policy and licenses',
+          page: _SettingsPage(title: 'About', child: _AboutSection()),
+        ),
       ],
     );
   }
+}
+
+class _MenuTile extends StatelessWidget {
+  const _MenuTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.page,
+    this.iconColor,
+  });
+
+  final IconData icon;
+  final Color? iconColor;
+  final String title;
+  final String subtitle;
+  final Widget page;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: iconColor),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => page),
+      ),
+    );
+  }
+}
+
+class _SettingsPage extends StatelessWidget {
+  const _SettingsPage({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 16),
+        children: [child],
+      ),
+    );
+  }
+}
+
+/// Builds a section from the saved settings once they are loaded.
+class _WithSettings extends ConsumerWidget {
+  const _WithSettings({required this.builder});
+
+  final Widget Function(AppSettings settings) builder;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(settingsProvider).when(
+          data: builder,
+          loading: () => const _Loading(),
+          error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
+        );
+  }
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+}
+
+Future<void> _saveSettings(WidgetRef ref, AppSettings value) {
+  return ref.read(settingsRepositoryProvider).save(value);
 }
 
 class _AboutSection extends StatelessWidget {
@@ -82,30 +208,13 @@ class _AboutSection extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Text(text, style: Theme.of(context).textTheme.titleMedium),
-    );
-  }
-}
-
-class _SettingsSection extends ConsumerWidget {
-  const _SettingsSection({required this.settings});
-
-  static const _snoozeOptions = [1, 3, 5, 10, 15, 20, 30];
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection({required this.settings});
 
   final AppSettings settings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final snoozeMinutes = settings.defaultSnoozeDuration.inMinutes;
     return Column(
       children: [
         SwitchListTile(
@@ -116,7 +225,7 @@ class _SettingsSection extends ConsumerWidget {
                 : Icons.light_mode,
           ),
           value: settings.themeMode == AppThemeMode.dark,
-          onChanged: (dark) => _save(
+          onChanged: (dark) => _saveSettings(
             ref,
             settings.copyWith(
               themeMode: dark ? AppThemeMode.dark : AppThemeMode.light,
@@ -124,6 +233,7 @@ class _SettingsSection extends ConsumerWidget {
           ),
         ),
         ListTile(
+          leading: const Icon(Icons.schedule),
           title: const Text('Time picker'),
           trailing: DropdownButton<TimePickerStyle>(
             value: settings.timePickerStyle,
@@ -139,46 +249,34 @@ class _SettingsSection extends ConsumerWidget {
             ],
             onChanged: (style) {
               if (style != null) {
-                _save(ref, settings.copyWith(timePickerStyle: style));
+                _saveSettings(ref, settings.copyWith(timePickerStyle: style));
               }
             },
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SoundPicker(
-            label: 'Default alarm sound',
-            value: settings.defaultRingtone,
-            onChanged: (value) async {
-              await _save(
-                ref,
-                settings.copyWith(
-                  defaultRingtone: value ?? Ringtone.fallbackId,
-                ),
-              );
-              // Alarms set to "Default" pick up the new sound.
-              await ref.read(alarmServiceProvider).recover();
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: SoundPicker(
-            label: 'Timer sound',
-            noneLabel: 'Same as default alarm sound',
-            value: settings.timerRingtone,
-            onChanged: (value) => _save(
-              ref,
-              value == null
-                  ? settings.copyWith(clearTimerRingtone: true)
-                  : settings.copyWith(timerRingtone: value),
-            ),
-          ),
-        ),
+      ],
+    );
+  }
+}
+
+class _AlarmDefaultsSection extends ConsumerWidget {
+  const _AlarmDefaultsSection({required this.settings});
+
+  static const _snoozeOptions = [1, 3, 5, 10, 15, 20, 30];
+
+  final AppSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final snoozeMinutes = settings.defaultSnoozeDuration.inMinutes;
+    return Column(
+      children: [
         SwitchListTile(
+          secondary: const Icon(Icons.vibration),
           title: const Text('Vibrate by default'),
+          subtitle: const Text('For new alarms'),
           value: settings.defaultVibration != VibrationSetting.off,
-          onChanged: (value) => _save(
+          onChanged: (value) => _saveSettings(
             ref,
             settings.copyWith(
               defaultVibration:
@@ -187,7 +285,9 @@ class _SettingsSection extends ConsumerWidget {
           ),
         ),
         ListTile(
+          leading: const Icon(Icons.snooze),
           title: const Text('Default snooze'),
+          subtitle: const Text('For new alarms'),
           trailing: DropdownButton<int>(
             value: _snoozeOptions.contains(snoozeMinutes) ? snoozeMinutes : 10,
             items: [
@@ -196,7 +296,7 @@ class _SettingsSection extends ConsumerWidget {
             ],
             onChanged: (value) {
               if (value != null) {
-                _save(
+                _saveSettings(
                   ref,
                   settings.copyWith(
                     defaultSnoozeDuration: Duration(minutes: value),
@@ -207,11 +307,13 @@ class _SettingsSection extends ConsumerWidget {
           ),
         ),
         SwitchListTile(
+          secondary: const Icon(Icons.notifications_none),
           title: const Text('Notify 1 hour before alarms'),
           subtitle: const Text('A silent notification with a Skip button'),
           value: settings.upcomingAlarmNotice,
           onChanged: (value) async {
-            await _save(ref, settings.copyWith(upcomingAlarmNotice: value));
+            await _saveSettings(
+                ref, settings.copyWith(upcomingAlarmNotice: value));
             // Shows or removes the notifications of every alarm.
             await ref.read(alarmServiceProvider).recover();
           },
@@ -219,9 +321,48 @@ class _SettingsSection extends ConsumerWidget {
       ],
     );
   }
+}
 
-  Future<void> _save(WidgetRef ref, AppSettings value) {
-    return ref.read(settingsRepositoryProvider).save(value);
+class _SoundsSection extends ConsumerWidget {
+  const _SoundsSection({required this.settings});
+
+  final AppSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        children: [
+          SoundPicker(
+            label: 'Default alarm sound',
+            value: settings.defaultRingtone,
+            onChanged: (value) async {
+              await _saveSettings(
+                ref,
+                settings.copyWith(
+                  defaultRingtone: value ?? Ringtone.fallbackId,
+                ),
+              );
+              // Alarms set to "Default" pick up the new sound.
+              await ref.read(alarmServiceProvider).recover();
+            },
+          ),
+          const SizedBox(height: 16),
+          SoundPicker(
+            label: 'Timer sound',
+            noneLabel: 'Same as default alarm sound',
+            value: settings.timerRingtone,
+            onChanged: (value) => _saveSettings(
+              ref,
+              value == null
+                  ? settings.copyWith(clearTimerRingtone: true)
+                  : settings.copyWith(timerRingtone: value),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -260,7 +401,10 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
 
   Future<void> _refresh() async {
     final status = await ref.read(alarmPermissionsProvider).status();
-    if (mounted) setState(() => _status = status);
+    if (!mounted) return;
+    setState(() => _status = status);
+    // Keeps the warning on the Settings menu in step.
+    ref.invalidate(fullScreenAlarmIssuesProvider);
   }
 
   @override
@@ -269,6 +413,13 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
     final scheduler = ref.read(alarmSchedulerProvider);
     return Column(
       children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Text(
+            'Check these if an alarm does not ring or does not show over '
+            'the lock screen. Tap a setting that is not allowed to fix it.',
+          ),
+        ),
         for (final entry in _status.entries)
           ListTile(
             leading: Icon(
@@ -357,6 +508,19 @@ class _ReliabilitySectionState extends ConsumerState<_ReliabilitySection>
       messenger
           .showSnackBar(SnackBar(content: Text('Test alarm failed: $error')));
     }
+  }
+}
+
+class _CategoriesPage extends ConsumerWidget {
+  const _CategoriesPage();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(categoriesProvider).when(
+          data: (items) => _CategorySection(categories: items),
+          loading: () => const _Loading(),
+          error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
+        );
   }
 }
 
