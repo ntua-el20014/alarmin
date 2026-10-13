@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app/links.dart';
 import '../../app/providers.dart';
 import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
@@ -38,6 +39,43 @@ class SettingsScreen extends ConsumerWidget {
           data: (items) => _CategorySection(categories: items),
           loading: () => const ListTile(title: Text('Loading categories...')),
           error: (error, stackTrace) => ListTile(title: Text('Error: $error')),
+        ),
+        const Divider(),
+        const _SectionTitle('About'),
+        const _AboutSection(),
+      ],
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: const Text('Privacy policy'),
+          subtitle: const Text('No data leaves your device'),
+          trailing: const Icon(Icons.open_in_new, size: 18),
+          onTap: () async {
+            final messenger = ScaffoldMessenger.of(context);
+            if (!await openUrl(privacyPolicyUrl)) {
+              messenger.showSnackBar(
+                const SnackBar(content: Text('No browser found')),
+              );
+            }
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.description_outlined),
+          title: const Text('Open-source licenses'),
+          onTap: () => showLicensePage(
+            context: context,
+            applicationName: 'Alarmin',
+          ),
         ),
       ],
     );

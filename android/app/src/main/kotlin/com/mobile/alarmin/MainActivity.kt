@@ -99,6 +99,7 @@ class MainActivity : FlutterActivity() {
                         openFullScreenIntentSettings()
                         result.success(null)
                     }
+                    "openUrl" -> result.success(openUrl(call.arguments as String))
                     "lockScreenPermission" -> result.success(lockScreenPermission())
                     "openLockScreenPermissionSettings" -> {
                         openLockScreenPermissionSettings()
@@ -273,5 +274,15 @@ class MainActivity : FlutterActivity() {
                 // Not exported on this OS version; try the next page.
             }
         }
+    }
+
+    private fun openUrl(url: String): Boolean = try {
+        startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        true
+    } catch (e: ActivityNotFoundException) {
+        false
     }
 }
