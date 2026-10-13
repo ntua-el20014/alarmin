@@ -1,0 +1,115 @@
+# Builds a signed app bundle on every push to main and uploads it to the
+# Google Play "Internal testing" track. Production releases are promoted by
+# hand in the Play Console.
+#
+# Switched off until the repository variable PLAY_PUBLISH_ENABLED is "true"
+# (Settings → Secrets and variables → Actions → Variables). While off, runs
+# show as skipped. Setup steps: play-store-release.md, "Automatic updates".
+#
+# Secrets:
+#   UPLOAD_KEYSTORE_BASE64       android/upload-keystore.jks, base64-encoded
+#   UPLOAD_KEYSTORE_PASSWORD     storePassword from android/key.properties
+#   UPLOAD_KEY_PASSWORD          keyPassword from android/key.properties
+#   PLAY_SERVICE_ACCOUNT_JSON    Google Cloud service account key (JSON)
+# Variables:
+#   PLAY_PUBLISH_ENABLED         "true" to switch on
+#   VERSION_CODE_OFFSET          added to the run number to form the Play
+#                                version code; must keep codes above the
+#                                manually uploaded ones (default 100)
+
+name: Play internal testing
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One upload at a time; a newer push replaces a queued older one.
+concurrency:
+  group: play-internal
+  cancel-in-progress: false
+
+jobs:
+  build-and-upload:
+    if: vars.PLAY_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Keep in step with the local Flutter version.
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Install Android SDK platform 37
+        # compileSdk is 37 (see android/app/build.gradle.kts).
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" > /dev/null
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      - name: Version code
+        id: version
+        run: |
+          offset="${{ vars.VERSION_CODE_OFFSET }}"
+          echo "code=$(( ${offset:-100} + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the upload key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$STORE_PASSWORD
+          keyPassword=$KEY_PASSWORD
+          keyAlias=upload
+          storeFile=../upload-keystore.jks
+          EOF
+
+      - name: Build app bundle
+        run: >
+          flutter build appbundle --release
+          --build-number=${{ steps.version.outputs.code }}
+          --obfuscate --split-debug-info=build/symbols
+
+      - name: Release notes from the commit message
+        run: |
+          mkdir -p build/whatsnew
+          git log -1 --pretty=%s | cut -c1-500 > build/whatsnew/whatsnew-en-US
+
+      - name: Upload to Play (internal testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.mobile.alarmin
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
+          whatsNewDirectory: build/whatsnew
+          mappingFile: build/app/outputs/mapping/release/mapping.txt
+
+      # Needed to read obfuscated Dart stack traces (flutter symbolize).
+      - name: Keep debug symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: symbols-${{ steps.version.outputs.code }}
+          path: build/symbols
+          retention-days: 90
+
+      - name: Remove the upload key
+        if: always()
+        run: rm -f android/upload-keystore.jks android/key.properties

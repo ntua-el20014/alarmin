@@ -4,6 +4,11 @@ Alarms, calendar, timer, and stopwatch. Android app (`com.mobile.alarmin`).
 
 ## Releasing to Google Play
 
+Once switched on, `.github/workflows/play-internal.yml` uploads every push to
+`main` to the Internal testing track, with the version code set
+automatically. Production releases are promoted in the Play Console. The
+steps below are for manual builds.
+
 1. Bump `version` in `pubspec.yaml`. The number after `+` is the Play
    version code and must go up with every upload (`1.0.1+2`, `1.0.2+3`, ...).
 2. Build the bundle:
