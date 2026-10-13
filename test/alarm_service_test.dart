@@ -52,6 +52,16 @@ void main() {
         DateTime(2026, 9, 21, 7));
   });
 
+  test('a gentle alarm fades in, a normal one does not', () async {
+    await service.save(_alarm().copyWith(wakeStyle: WakeStyle.gentle));
+    expect(scheduler.active[primaryNativeId('alarm-1')]?.fadeDuration,
+        gentleFadeDuration);
+
+    await service.save(_alarm());
+    expect(scheduler.active[primaryNativeId('alarm-1')]?.fadeDuration,
+        Duration.zero);
+  });
+
   test('schedules a bundled ringtone even for legacy ringtone values',
       () async {
     await service.save(_alarm(ringtone: 'assets/audio/default.mp3'));

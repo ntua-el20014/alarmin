@@ -103,6 +103,7 @@ class AlarmRepository {
       deleteAfterUse: row.deleteAfterUse,
       ringtone: row.ringtone,
       vibration: VibrationSetting.values[row.vibration],
+      wakeStyle: WakeStyle.values[row.wakeStyle],
       snoozeDuration: Duration(seconds: row.snoozeDurationSeconds),
       reincarnationCount: row.reincarnationCount,
       reincarnationInterval:
@@ -130,6 +131,7 @@ class AlarmRepository {
       deleteAfterUse: alarm.deleteAfterUse,
       ringtone: alarm.ringtone,
       vibration: alarm.vibration.index,
+      wakeStyle: Value(alarm.wakeStyle.index),
       snoozeDurationSeconds: alarm.snoozeDuration.inSeconds,
       reincarnationCount: alarm.reincarnationCount,
       reincarnationIntervalSeconds: alarm.reincarnationInterval.inSeconds,

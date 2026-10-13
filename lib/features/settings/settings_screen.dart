@@ -37,7 +37,7 @@ class SettingsScreen extends ConsumerWidget {
         _MenuTile(
           icon: Icons.alarm,
           title: 'Alarms',
-          subtitle: 'Vibration, snooze and upcoming alarm notice',
+          subtitle: 'Vibration, wake style, snooze and upcoming notice',
           page: _SettingsPage(
             title: 'Alarms',
             child: _WithSettings(
@@ -281,6 +281,20 @@ class _AlarmDefaultsSection extends ConsumerWidget {
             settings.copyWith(
               defaultVibration:
                   value ? VibrationSetting.standard : VibrationSetting.off,
+            ),
+          ),
+        ),
+        SwitchListTile(
+          secondary: const Icon(Icons.trending_up),
+          title: const Text('Gentle wake by default'),
+          subtitle: Text(
+            'New alarms fade in over ${gentleFadeDuration.inSeconds} seconds',
+          ),
+          value: settings.defaultWakeStyle == WakeStyle.gentle,
+          onChanged: (value) => _saveSettings(
+            ref,
+            settings.copyWith(
+              defaultWakeStyle: value ? WakeStyle.gentle : WakeStyle.normal,
             ),
           ),
         ),
@@ -537,6 +551,9 @@ class _CategorySection extends ConsumerWidget {
           ListTile(
             leading: Text(category.emoji, style: const TextStyle(fontSize: 24)),
             title: Text(category.name),
+            subtitle: category.hasAlarmDefaults
+                ? Text(_describeDefaults(category))
+                : null,
             trailing: Wrap(
               children: [
                 IconButton(
@@ -559,6 +576,17 @@ class _CategorySection extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  static String _describeDefaults(CategoryModel category) {
+    return [
+      if (category.defaultRingtone case final ringtone?)
+        Ringtone.resolve(ringtone).label,
+      if (category.defaultVibration case final vibration?)
+        vibration == VibrationSetting.off ? 'No vibration' : 'Vibrate',
+      if (category.defaultWakeStyle case final style?)
+        style == WakeStyle.gentle ? 'Gentle wake' : 'Normal wake',
+    ].join(' · ');
   }
 
   Future<void> _editCategory(

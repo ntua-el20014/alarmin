@@ -116,6 +116,70 @@ void main() {
     expect((await alarmRepository.findById('alarm-1'))?.categoryId, 'work');
   });
 
+  test('a category keeps its alarm defaults', () async {
+    final categoryRepository = CategoryRepository(database);
+    await categoryRepository.save(
+      CategoryModel(
+        id: 'meds',
+        name: 'Meds',
+        emoji: '💊',
+        defaultRingtone: 'gentle',
+        defaultVibration: VibrationSetting.off,
+        defaultWakeStyle: WakeStyle.gentle,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await categoryRepository.save(
+      CategoryModel(
+        id: 'plain',
+        name: 'Plain',
+        emoji: '📌',
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    final meds = await categoryRepository.findById('meds');
+    expect(meds?.defaultRingtone, 'gentle');
+    expect(meds?.defaultVibration, VibrationSetting.off);
+    expect(meds?.defaultWakeStyle, WakeStyle.gentle);
+    final plain = await categoryRepository.findById('plain');
+    expect(plain?.hasAlarmDefaults, isFalse);
+  });
+
+  test('an alarm and the settings keep their wake style', () async {
+    final settings = SettingsRepository(database);
+    await settings.save(
+      (await settings.load()).copyWith(defaultWakeStyle: WakeStyle.gentle),
+    );
+    expect((await settings.load()).defaultWakeStyle, WakeStyle.gentle);
+
+    final alarms = AlarmRepository(database);
+    await alarms.save(
+      AlarmModel(
+        id: 'gentle-alarm',
+        title: 'Gentle',
+        recurrence: const RecurrenceRule(
+          scheduleType: AlarmScheduleType.daily,
+          timeOfDay: 420,
+        ),
+        isEnabled: true,
+        deleteAfterUse: false,
+        ringtone: 'classic',
+        vibration: VibrationSetting.standard,
+        wakeStyle: WakeStyle.gentle,
+        snoozeDuration: const Duration(minutes: 5),
+        reincarnationCount: 0,
+        reincarnationInterval: const Duration(minutes: 5),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    expect(
+        (await alarms.findById('gentle-alarm'))?.wakeStyle, WakeStyle.gentle);
+  });
+
   test('re-saving an alarm keeps its pending reminders', () async {
     final alarmRepository = AlarmRepository(database);
     final reincarnationRepository = ReincarnationRepository(database);

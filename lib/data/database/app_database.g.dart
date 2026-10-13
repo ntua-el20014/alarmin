@@ -24,6 +24,24 @@ class $CategoriesTable extends Categories
   late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
       'emoji', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _defaultRingtoneMeta =
+      const VerificationMeta('defaultRingtone');
+  @override
+  late final GeneratedColumn<String> defaultRingtone = GeneratedColumn<String>(
+      'default_ringtone', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _defaultVibrationMeta =
+      const VerificationMeta('defaultVibration');
+  @override
+  late final GeneratedColumn<int> defaultVibration = GeneratedColumn<int>(
+      'default_vibration', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultWakeStyleMeta =
+      const VerificationMeta('defaultWakeStyle');
+  @override
+  late final GeneratedColumn<int> defaultWakeStyle = GeneratedColumn<int>(
+      'default_wake_style', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -37,7 +55,16 @@ class $CategoriesTable extends Categories
       'updated_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
   @override
-  List<GeneratedColumn> get $columns => [id, name, emoji, createdAt, updatedAt];
+  List<GeneratedColumn> get $columns => [
+        id,
+        name,
+        emoji,
+        defaultRingtone,
+        defaultVibration,
+        defaultWakeStyle,
+        createdAt,
+        updatedAt
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -64,6 +91,24 @@ class $CategoriesTable extends Categories
           _emojiMeta, emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta));
     } else if (isInserting) {
       context.missing(_emojiMeta);
+    }
+    if (data.containsKey('default_ringtone')) {
+      context.handle(
+          _defaultRingtoneMeta,
+          defaultRingtone.isAcceptableOrUnknown(
+              data['default_ringtone']!, _defaultRingtoneMeta));
+    }
+    if (data.containsKey('default_vibration')) {
+      context.handle(
+          _defaultVibrationMeta,
+          defaultVibration.isAcceptableOrUnknown(
+              data['default_vibration']!, _defaultVibrationMeta));
+    }
+    if (data.containsKey('default_wake_style')) {
+      context.handle(
+          _defaultWakeStyleMeta,
+          defaultWakeStyle.isAcceptableOrUnknown(
+              data['default_wake_style']!, _defaultWakeStyleMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -92,6 +137,12 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       emoji: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}emoji'])!,
+      defaultRingtone: attachedDatabase.typeMapping.read(
+          DriftSqlType.string, data['${effectivePrefix}default_ringtone']),
+      defaultVibration: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}default_vibration']),
+      defaultWakeStyle: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}default_wake_style']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -109,12 +160,18 @@ class Category extends DataClass implements Insertable<Category> {
   final String id;
   final String name;
   final String emoji;
+  final String? defaultRingtone;
+  final int? defaultVibration;
+  final int? defaultWakeStyle;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Category(
       {required this.id,
       required this.name,
       required this.emoji,
+      this.defaultRingtone,
+      this.defaultVibration,
+      this.defaultWakeStyle,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -123,6 +180,15 @@ class Category extends DataClass implements Insertable<Category> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['emoji'] = Variable<String>(emoji);
+    if (!nullToAbsent || defaultRingtone != null) {
+      map['default_ringtone'] = Variable<String>(defaultRingtone);
+    }
+    if (!nullToAbsent || defaultVibration != null) {
+      map['default_vibration'] = Variable<int>(defaultVibration);
+    }
+    if (!nullToAbsent || defaultWakeStyle != null) {
+      map['default_wake_style'] = Variable<int>(defaultWakeStyle);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -133,6 +199,15 @@ class Category extends DataClass implements Insertable<Category> {
       id: Value(id),
       name: Value(name),
       emoji: Value(emoji),
+      defaultRingtone: defaultRingtone == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultRingtone),
+      defaultVibration: defaultVibration == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultVibration),
+      defaultWakeStyle: defaultWakeStyle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultWakeStyle),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -145,6 +220,9 @@ class Category extends DataClass implements Insertable<Category> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       emoji: serializer.fromJson<String>(json['emoji']),
+      defaultRingtone: serializer.fromJson<String?>(json['defaultRingtone']),
+      defaultVibration: serializer.fromJson<int?>(json['defaultVibration']),
+      defaultWakeStyle: serializer.fromJson<int?>(json['defaultWakeStyle']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -156,6 +234,9 @@ class Category extends DataClass implements Insertable<Category> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'emoji': serializer.toJson<String>(emoji),
+      'defaultRingtone': serializer.toJson<String?>(defaultRingtone),
+      'defaultVibration': serializer.toJson<int?>(defaultVibration),
+      'defaultWakeStyle': serializer.toJson<int?>(defaultWakeStyle),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -165,12 +246,24 @@ class Category extends DataClass implements Insertable<Category> {
           {String? id,
           String? name,
           String? emoji,
+          Value<String?> defaultRingtone = const Value.absent(),
+          Value<int?> defaultVibration = const Value.absent(),
+          Value<int?> defaultWakeStyle = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Category(
         id: id ?? this.id,
         name: name ?? this.name,
         emoji: emoji ?? this.emoji,
+        defaultRingtone: defaultRingtone.present
+            ? defaultRingtone.value
+            : this.defaultRingtone,
+        defaultVibration: defaultVibration.present
+            ? defaultVibration.value
+            : this.defaultVibration,
+        defaultWakeStyle: defaultWakeStyle.present
+            ? defaultWakeStyle.value
+            : this.defaultWakeStyle,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -179,6 +272,15 @@ class Category extends DataClass implements Insertable<Category> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       emoji: data.emoji.present ? data.emoji.value : this.emoji,
+      defaultRingtone: data.defaultRingtone.present
+          ? data.defaultRingtone.value
+          : this.defaultRingtone,
+      defaultVibration: data.defaultVibration.present
+          ? data.defaultVibration.value
+          : this.defaultVibration,
+      defaultWakeStyle: data.defaultWakeStyle.present
+          ? data.defaultWakeStyle.value
+          : this.defaultWakeStyle,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -190,6 +292,9 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('emoji: $emoji, ')
+          ..write('defaultRingtone: $defaultRingtone, ')
+          ..write('defaultVibration: $defaultVibration, ')
+          ..write('defaultWakeStyle: $defaultWakeStyle, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -197,7 +302,8 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, emoji, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, name, emoji, defaultRingtone,
+      defaultVibration, defaultWakeStyle, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -205,6 +311,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.id == this.id &&
           other.name == this.name &&
           other.emoji == this.emoji &&
+          other.defaultRingtone == this.defaultRingtone &&
+          other.defaultVibration == this.defaultVibration &&
+          other.defaultWakeStyle == this.defaultWakeStyle &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -213,6 +322,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> emoji;
+  final Value<String?> defaultRingtone;
+  final Value<int?> defaultVibration;
+  final Value<int?> defaultWakeStyle;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -220,6 +332,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.emoji = const Value.absent(),
+    this.defaultRingtone = const Value.absent(),
+    this.defaultVibration = const Value.absent(),
+    this.defaultWakeStyle = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -228,6 +343,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     required String id,
     required String name,
     required String emoji,
+    this.defaultRingtone = const Value.absent(),
+    this.defaultVibration = const Value.absent(),
+    this.defaultWakeStyle = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -240,6 +358,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? emoji,
+    Expression<String>? defaultRingtone,
+    Expression<int>? defaultVibration,
+    Expression<int>? defaultWakeStyle,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -248,6 +369,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (emoji != null) 'emoji': emoji,
+      if (defaultRingtone != null) 'default_ringtone': defaultRingtone,
+      if (defaultVibration != null) 'default_vibration': defaultVibration,
+      if (defaultWakeStyle != null) 'default_wake_style': defaultWakeStyle,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -258,6 +382,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       {Value<String>? id,
       Value<String>? name,
       Value<String>? emoji,
+      Value<String?>? defaultRingtone,
+      Value<int?>? defaultVibration,
+      Value<int?>? defaultWakeStyle,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -265,6 +392,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
+      defaultRingtone: defaultRingtone ?? this.defaultRingtone,
+      defaultVibration: defaultVibration ?? this.defaultVibration,
+      defaultWakeStyle: defaultWakeStyle ?? this.defaultWakeStyle,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -282,6 +412,15 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     }
     if (emoji.present) {
       map['emoji'] = Variable<String>(emoji.value);
+    }
+    if (defaultRingtone.present) {
+      map['default_ringtone'] = Variable<String>(defaultRingtone.value);
+    }
+    if (defaultVibration.present) {
+      map['default_vibration'] = Variable<int>(defaultVibration.value);
+    }
+    if (defaultWakeStyle.present) {
+      map['default_wake_style'] = Variable<int>(defaultWakeStyle.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -301,6 +440,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('emoji: $emoji, ')
+          ..write('defaultRingtone: $defaultRingtone, ')
+          ..write('defaultVibration: $defaultVibration, ')
+          ..write('defaultWakeStyle: $defaultWakeStyle, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -441,6 +583,14 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
   late final GeneratedColumn<DateTime> skippedOccurrenceAt =
       GeneratedColumn<DateTime>('skipped_occurrence_at', aliasedName, true,
           type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _wakeStyleMeta =
+      const VerificationMeta('wakeStyle');
+  @override
+  late final GeneratedColumn<int> wakeStyle = GeneratedColumn<int>(
+      'wake_style', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -462,7 +612,8 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
         createdAt,
         updatedAt,
         nextOccurrenceAt,
-        skippedOccurrenceAt
+        skippedOccurrenceAt,
+        wakeStyle
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -606,6 +757,10 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
           skippedOccurrenceAt.isAcceptableOrUnknown(
               data['skipped_occurrence_at']!, _skippedOccurrenceAtMeta));
     }
+    if (data.containsKey('wake_style')) {
+      context.handle(_wakeStyleMeta,
+          wakeStyle.isAcceptableOrUnknown(data['wake_style']!, _wakeStyleMeta));
+    }
     return context;
   }
 
@@ -657,6 +812,8 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
       skippedOccurrenceAt: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime,
           data['${effectivePrefix}skipped_occurrence_at']),
+      wakeStyle: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}wake_style'])!,
     );
   }
 
@@ -687,6 +844,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
   final DateTime updatedAt;
   final DateTime? nextOccurrenceAt;
   final DateTime? skippedOccurrenceAt;
+  final int wakeStyle;
   const Alarm(
       {required this.id,
       required this.title,
@@ -707,7 +865,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       required this.createdAt,
       required this.updatedAt,
       this.nextOccurrenceAt,
-      this.skippedOccurrenceAt});
+      this.skippedOccurrenceAt,
+      required this.wakeStyle});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -746,6 +905,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     if (!nullToAbsent || skippedOccurrenceAt != null) {
       map['skipped_occurrence_at'] = Variable<DateTime>(skippedOccurrenceAt);
     }
+    map['wake_style'] = Variable<int>(wakeStyle);
     return map;
   }
 
@@ -785,6 +945,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       skippedOccurrenceAt: skippedOccurrenceAt == null && nullToAbsent
           ? const Value.absent()
           : Value(skippedOccurrenceAt),
+      wakeStyle: Value(wakeStyle),
     );
   }
 
@@ -817,6 +978,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           serializer.fromJson<DateTime?>(json['nextOccurrenceAt']),
       skippedOccurrenceAt:
           serializer.fromJson<DateTime?>(json['skippedOccurrenceAt']),
+      wakeStyle: serializer.fromJson<int>(json['wakeStyle']),
     );
   }
   @override
@@ -844,6 +1006,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'nextOccurrenceAt': serializer.toJson<DateTime?>(nextOccurrenceAt),
       'skippedOccurrenceAt': serializer.toJson<DateTime?>(skippedOccurrenceAt),
+      'wakeStyle': serializer.toJson<int>(wakeStyle),
     };
   }
 
@@ -867,7 +1030,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<DateTime?> nextOccurrenceAt = const Value.absent(),
-          Value<DateTime?> skippedOccurrenceAt = const Value.absent()}) =>
+          Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
+          int? wakeStyle}) =>
       Alarm(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -901,6 +1065,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
         skippedOccurrenceAt: skippedOccurrenceAt.present
             ? skippedOccurrenceAt.value
             : this.skippedOccurrenceAt,
+        wakeStyle: wakeStyle ?? this.wakeStyle,
       );
   Alarm copyWithCompanion(AlarmsCompanion data) {
     return Alarm(
@@ -947,6 +1112,7 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       skippedOccurrenceAt: data.skippedOccurrenceAt.present
           ? data.skippedOccurrenceAt.value
           : this.skippedOccurrenceAt,
+      wakeStyle: data.wakeStyle.present ? data.wakeStyle.value : this.wakeStyle,
     );
   }
 
@@ -973,33 +1139,36 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('nextOccurrenceAt: $nextOccurrenceAt, ')
-          ..write('skippedOccurrenceAt: $skippedOccurrenceAt')
+          ..write('skippedOccurrenceAt: $skippedOccurrenceAt, ')
+          ..write('wakeStyle: $wakeStyle')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id,
-      title,
-      categoryId,
-      scheduleType,
-      timeOfDay,
-      scheduledDate,
-      intervalDays,
-      scheduleStartDate,
-      scheduleEndDate,
-      isEnabled,
-      deleteAfterUse,
-      ringtone,
-      vibration,
-      snoozeDurationSeconds,
-      reincarnationCount,
-      reincarnationIntervalSeconds,
-      createdAt,
-      updatedAt,
-      nextOccurrenceAt,
-      skippedOccurrenceAt);
+  int get hashCode => Object.hashAll([
+        id,
+        title,
+        categoryId,
+        scheduleType,
+        timeOfDay,
+        scheduledDate,
+        intervalDays,
+        scheduleStartDate,
+        scheduleEndDate,
+        isEnabled,
+        deleteAfterUse,
+        ringtone,
+        vibration,
+        snoozeDurationSeconds,
+        reincarnationCount,
+        reincarnationIntervalSeconds,
+        createdAt,
+        updatedAt,
+        nextOccurrenceAt,
+        skippedOccurrenceAt,
+        wakeStyle
+      ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1024,7 +1193,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.nextOccurrenceAt == this.nextOccurrenceAt &&
-          other.skippedOccurrenceAt == this.skippedOccurrenceAt);
+          other.skippedOccurrenceAt == this.skippedOccurrenceAt &&
+          other.wakeStyle == this.wakeStyle);
 }
 
 class AlarmsCompanion extends UpdateCompanion<Alarm> {
@@ -1048,6 +1218,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
   final Value<DateTime> updatedAt;
   final Value<DateTime?> nextOccurrenceAt;
   final Value<DateTime?> skippedOccurrenceAt;
+  final Value<int> wakeStyle;
   final Value<int> rowid;
   const AlarmsCompanion({
     this.id = const Value.absent(),
@@ -1070,6 +1241,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.updatedAt = const Value.absent(),
     this.nextOccurrenceAt = const Value.absent(),
     this.skippedOccurrenceAt = const Value.absent(),
+    this.wakeStyle = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AlarmsCompanion.insert({
@@ -1093,6 +1265,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     required DateTime updatedAt,
     this.nextOccurrenceAt = const Value.absent(),
     this.skippedOccurrenceAt = const Value.absent(),
+    this.wakeStyle = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -1128,6 +1301,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? nextOccurrenceAt,
     Expression<DateTime>? skippedOccurrenceAt,
+    Expression<int>? wakeStyle,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1154,6 +1328,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       if (nextOccurrenceAt != null) 'next_occurrence_at': nextOccurrenceAt,
       if (skippedOccurrenceAt != null)
         'skipped_occurrence_at': skippedOccurrenceAt,
+      if (wakeStyle != null) 'wake_style': wakeStyle,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1179,6 +1354,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       Value<DateTime>? updatedAt,
       Value<DateTime?>? nextOccurrenceAt,
       Value<DateTime?>? skippedOccurrenceAt,
+      Value<int>? wakeStyle,
       Value<int>? rowid}) {
     return AlarmsCompanion(
       id: id ?? this.id,
@@ -1203,6 +1379,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       updatedAt: updatedAt ?? this.updatedAt,
       nextOccurrenceAt: nextOccurrenceAt ?? this.nextOccurrenceAt,
       skippedOccurrenceAt: skippedOccurrenceAt ?? this.skippedOccurrenceAt,
+      wakeStyle: wakeStyle ?? this.wakeStyle,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1273,6 +1450,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       map['skipped_occurrence_at'] =
           Variable<DateTime>(skippedOccurrenceAt.value);
     }
+    if (wakeStyle.present) {
+      map['wake_style'] = Variable<int>(wakeStyle.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1303,6 +1483,7 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
           ..write('updatedAt: $updatedAt, ')
           ..write('nextOccurrenceAt: $nextOccurrenceAt, ')
           ..write('skippedOccurrenceAt: $skippedOccurrenceAt, ')
+          ..write('wakeStyle: $wakeStyle, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2807,6 +2988,14 @@ class $AppSettingsTableTable extends AppSettingsTable
       defaultConstraints: GeneratedColumn.constraintIsAlways(
           'CHECK ("upcoming_alarm_notice" IN (0, 1))'),
       defaultValue: const Constant(true));
+  static const VerificationMeta _defaultWakeStyleMeta =
+      const VerificationMeta('defaultWakeStyle');
+  @override
+  late final GeneratedColumn<int> defaultWakeStyle = GeneratedColumn<int>(
+      'default_wake_style', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -2817,7 +3006,8 @@ class $AppSettingsTableTable extends AppSettingsTable
         defaultSnoozeDurationSeconds,
         themeMode,
         timerRingtone,
-        upcomingAlarmNotice
+        upcomingAlarmNotice,
+        defaultWakeStyle
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2890,6 +3080,12 @@ class $AppSettingsTableTable extends AppSettingsTable
           upcomingAlarmNotice.isAcceptableOrUnknown(
               data['upcoming_alarm_notice']!, _upcomingAlarmNoticeMeta));
     }
+    if (data.containsKey('default_wake_style')) {
+      context.handle(
+          _defaultWakeStyleMeta,
+          defaultWakeStyle.isAcceptableOrUnknown(
+              data['default_wake_style']!, _defaultWakeStyleMeta));
+    }
     return context;
   }
 
@@ -2918,6 +3114,8 @@ class $AppSettingsTableTable extends AppSettingsTable
           .read(DriftSqlType.string, data['${effectivePrefix}timer_ringtone']),
       upcomingAlarmNotice: attachedDatabase.typeMapping.read(
           DriftSqlType.bool, data['${effectivePrefix}upcoming_alarm_notice'])!,
+      defaultWakeStyle: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}default_wake_style'])!,
     );
   }
 
@@ -2938,6 +3136,7 @@ class AppSettingsTableData extends DataClass
   final int themeMode;
   final String? timerRingtone;
   final bool upcomingAlarmNotice;
+  final int defaultWakeStyle;
   const AppSettingsTableData(
       {required this.id,
       required this.timePickerStyle,
@@ -2947,7 +3146,8 @@ class AppSettingsTableData extends DataClass
       required this.defaultSnoozeDurationSeconds,
       required this.themeMode,
       this.timerRingtone,
-      required this.upcomingAlarmNotice});
+      required this.upcomingAlarmNotice,
+      required this.defaultWakeStyle});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -2963,6 +3163,7 @@ class AppSettingsTableData extends DataClass
       map['timer_ringtone'] = Variable<String>(timerRingtone);
     }
     map['upcoming_alarm_notice'] = Variable<bool>(upcomingAlarmNotice);
+    map['default_wake_style'] = Variable<int>(defaultWakeStyle);
     return map;
   }
 
@@ -2979,6 +3180,7 @@ class AppSettingsTableData extends DataClass
           ? const Value.absent()
           : Value(timerRingtone),
       upcomingAlarmNotice: Value(upcomingAlarmNotice),
+      defaultWakeStyle: Value(defaultWakeStyle),
     );
   }
 
@@ -2997,6 +3199,7 @@ class AppSettingsTableData extends DataClass
       timerRingtone: serializer.fromJson<String?>(json['timerRingtone']),
       upcomingAlarmNotice:
           serializer.fromJson<bool>(json['upcomingAlarmNotice']),
+      defaultWakeStyle: serializer.fromJson<int>(json['defaultWakeStyle']),
     );
   }
   @override
@@ -3013,6 +3216,7 @@ class AppSettingsTableData extends DataClass
       'themeMode': serializer.toJson<int>(themeMode),
       'timerRingtone': serializer.toJson<String?>(timerRingtone),
       'upcomingAlarmNotice': serializer.toJson<bool>(upcomingAlarmNotice),
+      'defaultWakeStyle': serializer.toJson<int>(defaultWakeStyle),
     };
   }
 
@@ -3025,7 +3229,8 @@ class AppSettingsTableData extends DataClass
           int? defaultSnoozeDurationSeconds,
           int? themeMode,
           Value<String?> timerRingtone = const Value.absent(),
-          bool? upcomingAlarmNotice}) =>
+          bool? upcomingAlarmNotice,
+          int? defaultWakeStyle}) =>
       AppSettingsTableData(
         id: id ?? this.id,
         timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -3038,6 +3243,7 @@ class AppSettingsTableData extends DataClass
         timerRingtone:
             timerRingtone.present ? timerRingtone.value : this.timerRingtone,
         upcomingAlarmNotice: upcomingAlarmNotice ?? this.upcomingAlarmNotice,
+        defaultWakeStyle: defaultWakeStyle ?? this.defaultWakeStyle,
       );
   AppSettingsTableData copyWithCompanion(AppSettingsTableCompanion data) {
     return AppSettingsTableData(
@@ -3064,6 +3270,9 @@ class AppSettingsTableData extends DataClass
       upcomingAlarmNotice: data.upcomingAlarmNotice.present
           ? data.upcomingAlarmNotice.value
           : this.upcomingAlarmNotice,
+      defaultWakeStyle: data.defaultWakeStyle.present
+          ? data.defaultWakeStyle.value
+          : this.defaultWakeStyle,
     );
   }
 
@@ -3079,7 +3288,8 @@ class AppSettingsTableData extends DataClass
               'defaultSnoozeDurationSeconds: $defaultSnoozeDurationSeconds, ')
           ..write('themeMode: $themeMode, ')
           ..write('timerRingtone: $timerRingtone, ')
-          ..write('upcomingAlarmNotice: $upcomingAlarmNotice')
+          ..write('upcomingAlarmNotice: $upcomingAlarmNotice, ')
+          ..write('defaultWakeStyle: $defaultWakeStyle')
           ..write(')'))
         .toString();
   }
@@ -3094,7 +3304,8 @@ class AppSettingsTableData extends DataClass
       defaultSnoozeDurationSeconds,
       themeMode,
       timerRingtone,
-      upcomingAlarmNotice);
+      upcomingAlarmNotice,
+      defaultWakeStyle);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3108,7 +3319,8 @@ class AppSettingsTableData extends DataClass
               this.defaultSnoozeDurationSeconds &&
           other.themeMode == this.themeMode &&
           other.timerRingtone == this.timerRingtone &&
-          other.upcomingAlarmNotice == this.upcomingAlarmNotice);
+          other.upcomingAlarmNotice == this.upcomingAlarmNotice &&
+          other.defaultWakeStyle == this.defaultWakeStyle);
 }
 
 class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
@@ -3121,6 +3333,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
   final Value<int> themeMode;
   final Value<String?> timerRingtone;
   final Value<bool> upcomingAlarmNotice;
+  final Value<int> defaultWakeStyle;
   const AppSettingsTableCompanion({
     this.id = const Value.absent(),
     this.timePickerStyle = const Value.absent(),
@@ -3131,6 +3344,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     this.themeMode = const Value.absent(),
     this.timerRingtone = const Value.absent(),
     this.upcomingAlarmNotice = const Value.absent(),
+    this.defaultWakeStyle = const Value.absent(),
   });
   AppSettingsTableCompanion.insert({
     this.id = const Value.absent(),
@@ -3142,6 +3356,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     this.themeMode = const Value.absent(),
     this.timerRingtone = const Value.absent(),
     this.upcomingAlarmNotice = const Value.absent(),
+    this.defaultWakeStyle = const Value.absent(),
   })  : timePickerStyle = Value(timePickerStyle),
         isGroupedView = Value(isGroupedView),
         defaultRingtone = Value(defaultRingtone),
@@ -3157,6 +3372,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     Expression<int>? themeMode,
     Expression<String>? timerRingtone,
     Expression<bool>? upcomingAlarmNotice,
+    Expression<int>? defaultWakeStyle,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3170,6 +3386,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       if (timerRingtone != null) 'timer_ringtone': timerRingtone,
       if (upcomingAlarmNotice != null)
         'upcoming_alarm_notice': upcomingAlarmNotice,
+      if (defaultWakeStyle != null) 'default_wake_style': defaultWakeStyle,
     });
   }
 
@@ -3182,7 +3399,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       Value<int>? defaultSnoozeDurationSeconds,
       Value<int>? themeMode,
       Value<String?>? timerRingtone,
-      Value<bool>? upcomingAlarmNotice}) {
+      Value<bool>? upcomingAlarmNotice,
+      Value<int>? defaultWakeStyle}) {
     return AppSettingsTableCompanion(
       id: id ?? this.id,
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -3194,6 +3412,7 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
       themeMode: themeMode ?? this.themeMode,
       timerRingtone: timerRingtone ?? this.timerRingtone,
       upcomingAlarmNotice: upcomingAlarmNotice ?? this.upcomingAlarmNotice,
+      defaultWakeStyle: defaultWakeStyle ?? this.defaultWakeStyle,
     );
   }
 
@@ -3228,6 +3447,9 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
     if (upcomingAlarmNotice.present) {
       map['upcoming_alarm_notice'] = Variable<bool>(upcomingAlarmNotice.value);
     }
+    if (defaultWakeStyle.present) {
+      map['default_wake_style'] = Variable<int>(defaultWakeStyle.value);
+    }
     return map;
   }
 
@@ -3243,7 +3465,8 @@ class AppSettingsTableCompanion extends UpdateCompanion<AppSettingsTableData> {
               'defaultSnoozeDurationSeconds: $defaultSnoozeDurationSeconds, ')
           ..write('themeMode: $themeMode, ')
           ..write('timerRingtone: $timerRingtone, ')
-          ..write('upcomingAlarmNotice: $upcomingAlarmNotice')
+          ..write('upcomingAlarmNotice: $upcomingAlarmNotice, ')
+          ..write('defaultWakeStyle: $defaultWakeStyle')
           ..write(')'))
         .toString();
   }
@@ -3314,6 +3537,9 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   required String id,
   required String name,
   required String emoji,
+  Value<String?> defaultRingtone,
+  Value<int?> defaultVibration,
+  Value<int?> defaultWakeStyle,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -3322,6 +3548,9 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String> id,
   Value<String> name,
   Value<String> emoji,
+  Value<String?> defaultRingtone,
+  Value<int?> defaultVibration,
+  Value<int?> defaultWakeStyle,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3363,6 +3592,18 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<String> get emoji => $composableBuilder(
       column: $table.emoji, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get defaultRingtone => $composableBuilder(
+      column: $table.defaultRingtone,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultVibration => $composableBuilder(
+      column: $table.defaultVibration,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3410,6 +3651,18 @@ class $$CategoriesTableOrderingComposer
   ColumnOrderings<String> get emoji => $composableBuilder(
       column: $table.emoji, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get defaultRingtone => $composableBuilder(
+      column: $table.defaultRingtone,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get defaultVibration => $composableBuilder(
+      column: $table.defaultVibration,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3434,6 +3687,15 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<String> get emoji =>
       $composableBuilder(column: $table.emoji, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultRingtone => $composableBuilder(
+      column: $table.defaultRingtone, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultVibration => $composableBuilder(
+      column: $table.defaultVibration, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3489,6 +3751,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<String> emoji = const Value.absent(),
+            Value<String?> defaultRingtone = const Value.absent(),
+            Value<int?> defaultVibration = const Value.absent(),
+            Value<int?> defaultWakeStyle = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3497,6 +3762,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             id: id,
             name: name,
             emoji: emoji,
+            defaultRingtone: defaultRingtone,
+            defaultVibration: defaultVibration,
+            defaultWakeStyle: defaultWakeStyle,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3505,6 +3773,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             required String id,
             required String name,
             required String emoji,
+            Value<String?> defaultRingtone = const Value.absent(),
+            Value<int?> defaultVibration = const Value.absent(),
+            Value<int?> defaultWakeStyle = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -3513,6 +3784,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             id: id,
             name: name,
             emoji: emoji,
+            defaultRingtone: defaultRingtone,
+            defaultVibration: defaultVibration,
+            defaultWakeStyle: defaultWakeStyle,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3583,6 +3857,7 @@ typedef $$AlarmsTableCreateCompanionBuilder = AlarmsCompanion Function({
   required DateTime updatedAt,
   Value<DateTime?> nextOccurrenceAt,
   Value<DateTime?> skippedOccurrenceAt,
+  Value<int> wakeStyle,
   Value<int> rowid,
 });
 typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
@@ -3606,6 +3881,7 @@ typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
   Value<DateTime> updatedAt,
   Value<DateTime?> nextOccurrenceAt,
   Value<DateTime?> skippedOccurrenceAt,
+  Value<int> wakeStyle,
   Value<int> rowid,
 });
 
@@ -3731,6 +4007,9 @@ class $$AlarmsTableFilterComposer
   ColumnFilters<DateTime> get skippedOccurrenceAt => $composableBuilder(
       column: $table.skippedOccurrenceAt,
       builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get wakeStyle => $composableBuilder(
+      column: $table.wakeStyle, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -3872,6 +4151,9 @@ class $$AlarmsTableOrderingComposer
       column: $table.skippedOccurrenceAt,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get wakeStyle => $composableBuilder(
+      column: $table.wakeStyle, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -3958,6 +4240,9 @@ class $$AlarmsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get skippedOccurrenceAt => $composableBuilder(
       column: $table.skippedOccurrenceAt, builder: (column) => column);
+
+  GeneratedColumn<int> get wakeStyle =>
+      $composableBuilder(column: $table.wakeStyle, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4069,6 +4354,7 @@ class $$AlarmsTableTableManager extends RootTableManager<
             Value<DateTime> updatedAt = const Value.absent(),
             Value<DateTime?> nextOccurrenceAt = const Value.absent(),
             Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
+            Value<int> wakeStyle = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               AlarmsCompanion(
@@ -4092,6 +4378,7 @@ class $$AlarmsTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             nextOccurrenceAt: nextOccurrenceAt,
             skippedOccurrenceAt: skippedOccurrenceAt,
+            wakeStyle: wakeStyle,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4115,6 +4402,7 @@ class $$AlarmsTableTableManager extends RootTableManager<
             required DateTime updatedAt,
             Value<DateTime?> nextOccurrenceAt = const Value.absent(),
             Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
+            Value<int> wakeStyle = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               AlarmsCompanion.insert(
@@ -4138,6 +4426,7 @@ class $$AlarmsTableTableManager extends RootTableManager<
             updatedAt: updatedAt,
             nextOccurrenceAt: nextOccurrenceAt,
             skippedOccurrenceAt: skippedOccurrenceAt,
+            wakeStyle: wakeStyle,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
@@ -5388,6 +5677,7 @@ typedef $$AppSettingsTableTableCreateCompanionBuilder
   Value<int> themeMode,
   Value<String?> timerRingtone,
   Value<bool> upcomingAlarmNotice,
+  Value<int> defaultWakeStyle,
 });
 typedef $$AppSettingsTableTableUpdateCompanionBuilder
     = AppSettingsTableCompanion Function({
@@ -5400,6 +5690,7 @@ typedef $$AppSettingsTableTableUpdateCompanionBuilder
   Value<int> themeMode,
   Value<String?> timerRingtone,
   Value<bool> upcomingAlarmNotice,
+  Value<int> defaultWakeStyle,
 });
 
 class $$AppSettingsTableTableFilterComposer
@@ -5441,6 +5732,10 @@ class $$AppSettingsTableTableFilterComposer
 
   ColumnFilters<bool> get upcomingAlarmNotice => $composableBuilder(
       column: $table.upcomingAlarmNotice,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle,
       builder: (column) => ColumnFilters(column));
 }
 
@@ -5486,6 +5781,10 @@ class $$AppSettingsTableTableOrderingComposer
   ColumnOrderings<bool> get upcomingAlarmNotice => $composableBuilder(
       column: $table.upcomingAlarmNotice,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle,
+      builder: (column) => ColumnOrderings(column));
 }
 
 class $$AppSettingsTableTableAnnotationComposer
@@ -5523,6 +5822,9 @@ class $$AppSettingsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get upcomingAlarmNotice => $composableBuilder(
       column: $table.upcomingAlarmNotice, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultWakeStyle => $composableBuilder(
+      column: $table.defaultWakeStyle, builder: (column) => column);
 }
 
 class $$AppSettingsTableTableTableManager extends RootTableManager<
@@ -5562,6 +5864,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             Value<int> themeMode = const Value.absent(),
             Value<String?> timerRingtone = const Value.absent(),
             Value<bool> upcomingAlarmNotice = const Value.absent(),
+            Value<int> defaultWakeStyle = const Value.absent(),
           }) =>
               AppSettingsTableCompanion(
             id: id,
@@ -5573,6 +5876,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             themeMode: themeMode,
             timerRingtone: timerRingtone,
             upcomingAlarmNotice: upcomingAlarmNotice,
+            defaultWakeStyle: defaultWakeStyle,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -5584,6 +5888,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             Value<int> themeMode = const Value.absent(),
             Value<String?> timerRingtone = const Value.absent(),
             Value<bool> upcomingAlarmNotice = const Value.absent(),
+            Value<int> defaultWakeStyle = const Value.absent(),
           }) =>
               AppSettingsTableCompanion.insert(
             id: id,
@@ -5595,6 +5900,7 @@ class $$AppSettingsTableTableTableManager extends RootTableManager<
             themeMode: themeMode,
             timerRingtone: timerRingtone,
             upcomingAlarmNotice: upcomingAlarmNotice,
+            defaultWakeStyle: defaultWakeStyle,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

@@ -7,6 +7,11 @@ class Categories extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get emoji => text()();
+  // Added in schema v7: defaults for new alarms in the category; null means
+  // the app-wide default from Settings.
+  TextColumn get defaultRingtone => text().nullable()();
+  IntColumn get defaultVibration => integer().nullable()();
+  IntColumn get defaultWakeStyle => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -39,6 +44,8 @@ class Alarms extends Table {
   // Added in schema v6; an occurrence skipped from the upcoming alarm
   // notification, so rescheduling moves past it.
   DateTimeColumn get skippedOccurrenceAt => dateTime().nullable()();
+  // Added in schema v7; WakeStyle index, 0 = normal.
+  IntColumn get wakeStyle => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -110,6 +117,9 @@ class AppSettingsTable extends Table {
   // Added in schema v6; quiet notification an hour before each alarm.
   BoolColumn get upcomingAlarmNotice =>
       boolean().withDefault(const Constant(true))();
+  // Added in schema v7; WakeStyle index for new alarms.
+  IntColumn get defaultWakeStyle =>
+      integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -131,7 +141,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -164,7 +174,7 @@ class AppDatabase extends _$AppDatabase {
             await migrator.alterTable(
               TableMigration(
                 alarms,
-                newColumns: [alarms.skippedOccurrenceAt],
+                newColumns: [alarms.skippedOccurrenceAt, alarms.wakeStyle],
               ),
             );
             await migrator.alterTable(TableMigration(alarmWeekdays));
@@ -200,6 +210,14 @@ class AppDatabase extends _$AppDatabase {
             }
             await migrator.addColumn(
                 appSettingsTable, appSettingsTable.upcomingAlarmNotice);
+          }
+          if (from < 7) {
+            if (from >= 2) await migrator.addColumn(alarms, alarms.wakeStyle);
+            await migrator.addColumn(categories, categories.defaultRingtone);
+            await migrator.addColumn(categories, categories.defaultVibration);
+            await migrator.addColumn(categories, categories.defaultWakeStyle);
+            await migrator.addColumn(
+                appSettingsTable, appSettingsTable.defaultWakeStyle);
           }
         },
         beforeOpen: (details) async {

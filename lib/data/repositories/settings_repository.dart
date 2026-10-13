@@ -51,6 +51,7 @@ class SettingsRepository {
       themeMode: AppThemeMode.values[row.themeMode],
       timerRingtone: row.timerRingtone,
       upcomingAlarmNotice: row.upcomingAlarmNotice,
+      defaultWakeStyle: WakeStyle.values[row.defaultWakeStyle],
     );
   }
 
@@ -65,6 +66,7 @@ class SettingsRepository {
       themeMode: Value(settings.themeMode.index),
       timerRingtone: Value(settings.timerRingtone),
       upcomingAlarmNotice: Value(settings.upcomingAlarmNotice),
+      defaultWakeStyle: Value(settings.defaultWakeStyle.index),
     );
   }
 }

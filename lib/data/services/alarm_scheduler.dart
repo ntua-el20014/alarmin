@@ -17,6 +17,7 @@ class NativeAlarmRequest {
     required this.ringtone,
     this.vibrate = true,
     this.loopAudio = true,
+    this.fadeDuration = Duration.zero,
   });
 
   final int id;
@@ -28,6 +29,9 @@ class NativeAlarmRequest {
   final String ringtone;
   final bool vibrate;
   final bool loopAudio;
+
+  /// How long the volume takes to rise; zero starts at full volume.
+  final Duration fadeDuration;
 }
 
 abstract interface class AlarmScheduler {
@@ -92,6 +96,7 @@ class NativeAlarmScheduler implements AlarmScheduler {
           assetAudioPath: Ringtone.resolve(request.ringtone).assetPath,
           loopAudio: request.loopAudio,
           vibrate: request.vibrate,
+          fadeDuration: request.fadeDuration.inMilliseconds / 1000,
           warningNotificationOnKill: Platform.isIOS,
           androidFullScreenIntent: true,
           notificationSettings: native_alarm.NotificationSettings(

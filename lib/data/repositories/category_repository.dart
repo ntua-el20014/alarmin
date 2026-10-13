@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
+import '../models/alarm_model.dart';
 import '../models/category_model.dart';
 
 class CategoryRepository {
@@ -30,6 +31,9 @@ class CategoryRepository {
             id: category.id,
             name: category.name,
             emoji: category.emoji,
+            defaultRingtone: Value(category.defaultRingtone),
+            defaultVibration: Value(category.defaultVibration?.index),
+            defaultWakeStyle: Value(category.defaultWakeStyle?.index),
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
           ),
@@ -52,6 +56,13 @@ class CategoryRepository {
       id: row.id,
       name: row.name,
       emoji: row.emoji,
+      defaultRingtone: row.defaultRingtone,
+      defaultVibration: row.defaultVibration == null
+          ? null
+          : VibrationSetting.values[row.defaultVibration!],
+      defaultWakeStyle: row.defaultWakeStyle == null
+          ? null
+          : WakeStyle.values[row.defaultWakeStyle!],
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );

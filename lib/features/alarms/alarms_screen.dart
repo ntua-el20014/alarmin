@@ -312,7 +312,13 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
   late bool _deleteAfterUse;
   late String _ringtone;
   late VibrationSetting _vibration;
+  late WakeStyle _wakeStyle;
   late int _snoozeMinutes;
+
+  /// Fields picked by hand; a category's defaults leave them alone.
+  bool _ringtoneTouched = false;
+  bool _vibrationTouched = false;
+  bool _wakeStyleTouched = false;
   late int _reincarnationCount;
   late int _reincarnationIntervalMinutes;
   bool _saving = false;
@@ -357,6 +363,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
     // New alarms follow the Settings default until a sound is picked.
     _ringtone = alarm?.ringtone ?? Ringtone.followDefault;
     _vibration = alarm?.vibration ?? settings.defaultVibration;
+    _wakeStyle = alarm?.wakeStyle ?? settings.defaultWakeStyle;
     _snoozeMinutes = _nearest(
       (alarm?.snoozeDuration ?? settings.defaultSnoozeDuration).inMinutes,
       _snoozeOptions,
@@ -452,7 +459,10 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
                 if (value == _newCategoryValue) {
                   _createCategory();
                 } else {
-                  setState(() => _categoryId = value);
+                  setState(() {
+                    _categoryId = value;
+                    _applyCategoryDefaults();
+                  });
                 }
               },
             ),
@@ -584,23 +594,58 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
               ),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text('Sound and snooze'),
+              title: const Text('Sound, wake style and snooze'),
               children: [
                 SoundPicker(
                   label: 'Sound',
                   noneLabel:
                       'Default (${Ringtone.resolve(defaultSound).label})',
                   value: _ringtone == Ringtone.followDefault ? null : _ringtone,
-                  onChanged: (value) => setState(
-                    () => _ringtone = value ?? Ringtone.followDefault,
+                  onChanged: (value) => setState(() {
+                    _ringtone = value ?? Ringtone.followDefault;
+                    _ringtoneTouched = true;
+                  }),
+                ),
+                const SizedBox(height: 12),
+                SegmentedButton<WakeStyle>(
+                  segments: const [
+                    ButtonSegment(
+                      value: WakeStyle.normal,
+                      icon: Icon(Icons.volume_up),
+                      label: Text('Normal'),
+                    ),
+                    ButtonSegment(
+                      value: WakeStyle.gentle,
+                      icon: Icon(Icons.trending_up),
+                      label: Text('Gentle'),
+                    ),
+                  ],
+                  selected: {_wakeStyle},
+                  onSelectionChanged: (selection) => setState(() {
+                    _wakeStyle = selection.single;
+                    _wakeStyleTouched = true;
+                  }),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    _wakeStyle == WakeStyle.gentle
+                        ? 'The volume rises over '
+                            '${gentleFadeDuration.inSeconds} seconds'
+                        : 'Rings at full volume right away',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Vibrate'),
                   value: _vibration != VibrationSetting.off,
-                  onChanged: (value) => setState(() => _vibration =
-                      value ? VibrationSetting.standard : VibrationSetting.off),
+                  onChanged: (value) => setState(() {
+                    _vibration = value
+                        ? VibrationSetting.standard
+                        : VibrationSetting.off;
+                    _vibrationTouched = true;
+                  }),
                 ),
                 DropdownButtonFormField<int>(
                   initialValue: _snoozeMinutes,
@@ -636,11 +681,35 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
     );
   }
 
+  /// A new alarm takes its category's defaults (or the Settings defaults
+  /// when the category has none) for every field not picked by hand.
+  /// Existing and duplicated alarms keep their own values.
+  void _applyCategoryDefaults([CategoryModel? category]) {
+    if (widget.alarm != null) return;
+    category ??= (ref.read(categoriesProvider).value ?? const [])
+        .where((candidate) => candidate.id == _categoryId)
+        .firstOrNull;
+    final settings =
+        ref.read(settingsProvider).value ?? const AppSettings.defaults();
+    if (!_ringtoneTouched) {
+      _ringtone = category?.defaultRingtone ?? Ringtone.followDefault;
+    }
+    if (!_vibrationTouched) {
+      _vibration = category?.defaultVibration ?? settings.defaultVibration;
+    }
+    if (!_wakeStyleTouched) {
+      _wakeStyle = category?.defaultWakeStyle ?? settings.defaultWakeStyle;
+    }
+  }
+
   Future<void> _createCategory() async {
     final created = await showCategoryEditor(context, ref);
     if (!mounted) return;
     setState(() {
-      if (created != null) _categoryId = created.id;
+      if (created != null) {
+        _categoryId = created.id;
+        _applyCategoryDefaults(created);
+      }
       // Also resets the field if the dialog was cancelled.
       _categoryFieldVersion++;
     });
@@ -759,6 +828,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
           _scheduleType == AlarmScheduleType.once && _deleteAfterUse,
       ringtone: _ringtone,
       vibration: _vibration,
+      wakeStyle: _wakeStyle,
       snoozeDuration: Duration(minutes: _snoozeMinutes),
       reincarnationCount: _reincarnationCount,
       reincarnationInterval: Duration(minutes: _reincarnationIntervalMinutes),

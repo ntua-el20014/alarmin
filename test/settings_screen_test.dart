@@ -51,8 +51,7 @@ void main() {
     expect(find.text('Notify 1 hour before alarms'), findsOneWidget);
   });
 
-  testWidgets('warns on the menu when permissions are missing',
-      (tester) async {
+  testWidgets('warns on the menu when permissions are missing', (tester) async {
     await pumpSettings(tester, issues: ['Notifications', 'Exact alarms']);
     await tester.pumpAndSettle();
 

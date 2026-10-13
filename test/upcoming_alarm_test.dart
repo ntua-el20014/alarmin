@@ -82,8 +82,7 @@ void main() {
     expect(notices.active, isEmpty);
   });
 
-  test('skipping a repeating alarm moves it to the next occurrence',
-      () async {
+  test('skipping a repeating alarm moves it to the next occurrence', () async {
     final alarm = _alarm(reminders: 1);
     await service.save(alarm);
     // What the notification's Skip button does natively.
@@ -99,8 +98,8 @@ void main() {
     expect(scheduler.active[primaryNativeId(alarm.id)]?.dateTime,
         DateTime(2026, 9, 22, 7));
     expect(
-      scheduler.active.containsKey(
-          reminderNativeId(alarm.id, DateTime(2026, 9, 21, 7), 1)),
+      scheduler.active
+          .containsKey(reminderNativeId(alarm.id, DateTime(2026, 9, 21, 7), 1)),
       isFalse,
     );
     expect(notices.active[noticeSlotId(alarm.id, 0)]?.occurrence,

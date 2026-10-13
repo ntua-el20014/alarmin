@@ -2,6 +2,16 @@ import 'recurrence_rule.dart';
 
 enum VibrationSetting { off, standard }
 
+/// How the alarm sound starts. Stored by index: keep `normal` first.
+enum WakeStyle {
+  normal,
+
+  /// The volume rises over [gentleFadeDuration].
+  gentle,
+}
+
+const gentleFadeDuration = Duration(seconds: 30);
+
 class AlarmModel {
   const AlarmModel({
     required this.id,
@@ -19,6 +29,7 @@ class AlarmModel {
     required this.updatedAt,
     this.nextOccurrenceAt,
     this.skippedOccurrenceAt,
+    this.wakeStyle = WakeStyle.normal,
   }) : assert(reincarnationCount >= 0);
 
   final String id;
@@ -29,6 +40,7 @@ class AlarmModel {
   final bool deleteAfterUse;
   final String ringtone;
   final VibrationSetting vibration;
+  final WakeStyle wakeStyle;
   final Duration snoozeDuration;
   final int reincarnationCount;
   final Duration reincarnationInterval;
@@ -51,6 +63,7 @@ class AlarmModel {
     bool? deleteAfterUse,
     String? ringtone,
     VibrationSetting? vibration,
+    WakeStyle? wakeStyle,
     Duration? snoozeDuration,
     int? reincarnationCount,
     Duration? reincarnationInterval,
@@ -70,6 +83,7 @@ class AlarmModel {
       deleteAfterUse: deleteAfterUse ?? this.deleteAfterUse,
       ringtone: ringtone ?? this.ringtone,
       vibration: vibration ?? this.vibration,
+      wakeStyle: wakeStyle ?? this.wakeStyle,
       snoozeDuration: snoozeDuration ?? this.snoozeDuration,
       reincarnationCount: reincarnationCount ?? this.reincarnationCount,
       reincarnationInterval:

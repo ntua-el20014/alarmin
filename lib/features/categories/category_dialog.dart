@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../data/models/alarm_model.dart';
 import '../../data/models/category_model.dart';
 import '../settings/emoji_input.dart';
+import '../sounds/sound_picker.dart';
 
 /// Shows the add/edit category dialog and saves the result. Returns the
 /// saved category, or null if the dialog was cancelled. Used by Settings and
@@ -13,7 +15,7 @@ Future<CategoryModel?> showCategoryEditor(
   WidgetRef ref, {
   CategoryModel? category,
 }) async {
-  final result = await showDialog<(String, String)>(
+  final result = await showDialog<_CategoryDraft>(
     context: context,
     builder: (context) => CategoryDialog(category: category),
   );
@@ -21,8 +23,11 @@ Future<CategoryModel?> showCategoryEditor(
   final now = DateTime.now();
   final saved = CategoryModel(
     id: category?.id ?? 'category-${now.microsecondsSinceEpoch}',
-    name: result.$1,
-    emoji: result.$2,
+    name: result.name,
+    emoji: result.emoji,
+    defaultRingtone: result.ringtone,
+    defaultVibration: result.vibration,
+    defaultWakeStyle: result.wakeStyle,
     createdAt: category?.createdAt ?? now,
     updatedAt: now,
   );
@@ -32,6 +37,22 @@ Future<CategoryModel?> showCategoryEditor(
     await ref.read(alarmServiceProvider).recover();
   }
   return saved;
+}
+
+class _CategoryDraft {
+  const _CategoryDraft({
+    required this.name,
+    required this.emoji,
+    required this.ringtone,
+    required this.vibration,
+    required this.wakeStyle,
+  });
+
+  final String name;
+  final String emoji;
+  final String? ringtone;
+  final VibrationSetting? vibration;
+  final WakeStyle? wakeStyle;
 }
 
 /// Owns its text controllers so they are disposed only after the dialog's
@@ -50,6 +71,9 @@ class _CategoryDialogState extends State<CategoryDialog> {
       TextEditingController(text: widget.category?.name ?? '');
   late final TextEditingController _emoji =
       TextEditingController(text: widget.category?.emoji ?? '🏷️');
+  late String? _ringtone = widget.category?.defaultRingtone;
+  late VibrationSetting? _vibration = widget.category?.defaultVibration;
+  late WakeStyle? _wakeStyle = widget.category?.defaultWakeStyle;
 
   @override
   void dispose() {
@@ -71,11 +95,21 @@ class _CategoryDialogState extends State<CategoryDialog> {
       setState(() => _error = 'Pick one emoji.');
       return;
     }
-    Navigator.pop(context, (name, emoji));
+    Navigator.pop(
+      context,
+      _CategoryDraft(
+        name: name,
+        emoji: emoji,
+        ringtone: _ringtone,
+        vibration: _vibration,
+        wakeStyle: _wakeStyle,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return AlertDialog(
       title: Text(widget.category == null ? 'Add category' : 'Edit category'),
       content: SingleChildScrollView(
@@ -85,7 +119,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
           children: [
             TextField(
               controller: _name,
-              autofocus: true,
+              autofocus: widget.category == null,
               textCapitalization: TextCapitalization.sentences,
               decoration: const InputDecoration(labelText: 'Name'),
             ),
@@ -120,12 +154,58 @@ class _CategoryDialogState extends State<CategoryDialog> {
                   ),
               ],
             ),
+            const SizedBox(height: 20),
+            Text('Defaults for new alarms', style: theme.textTheme.titleSmall),
+            Text(
+              'New alarms in this category start with these. "App default" '
+              'uses Settings.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            SoundPicker(
+              label: 'Sound',
+              noneLabel: 'App default',
+              value: _ringtone,
+              onChanged: (value) => setState(() => _ringtone = value),
+            ),
+            DropdownButtonFormField<VibrationSetting?>(
+              initialValue: _vibration,
+              decoration: const InputDecoration(labelText: 'Vibrate'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('App default')),
+                DropdownMenuItem(
+                  value: VibrationSetting.standard,
+                  child: Text('On'),
+                ),
+                DropdownMenuItem(
+                  value: VibrationSetting.off,
+                  child: Text('Off'),
+                ),
+              ],
+              onChanged: (value) => setState(() => _vibration = value),
+            ),
+            DropdownButtonFormField<WakeStyle?>(
+              initialValue: _wakeStyle,
+              decoration: const InputDecoration(labelText: 'Wake style'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('App default')),
+                DropdownMenuItem(
+                  value: WakeStyle.normal,
+                  child: Text('Normal'),
+                ),
+                DropdownMenuItem(
+                  value: WakeStyle.gentle,
+                  child: Text('Gentle (fade in)'),
+                ),
+              ],
+              onChanged: (value) => setState(() => _wakeStyle = value),
+            ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   _error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
           ],

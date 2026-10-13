@@ -537,6 +537,9 @@ class AlarmService {
         body: body,
         ringtone: await _ringtoneFor(alarm),
         vibrate: alarm.vibration != VibrationSetting.off,
+        fadeDuration: alarm.wakeStyle == WakeStyle.gentle
+            ? gentleFadeDuration
+            : Duration.zero,
       ),
     );
     if (!scheduled) {

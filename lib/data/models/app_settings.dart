@@ -16,6 +16,7 @@ class AppSettings {
     this.themeMode = AppThemeMode.dark,
     this.timerRingtone,
     this.upcomingAlarmNotice = true,
+    this.defaultWakeStyle = WakeStyle.normal,
   });
 
   const AppSettings.defaults()
@@ -26,7 +27,8 @@ class AppSettings {
         defaultSnoozeDuration = const Duration(minutes: 10),
         themeMode = AppThemeMode.dark,
         timerRingtone = null,
-        upcomingAlarmNotice = true;
+        upcomingAlarmNotice = true,
+        defaultWakeStyle = WakeStyle.normal;
 
   final TimePickerStyle timePickerStyle;
   final bool isGroupedView;
@@ -41,6 +43,9 @@ class AppSettings {
   /// Quiet notification an hour before each alarm, with a Skip button.
   final bool upcomingAlarmNotice;
 
+  /// Wake style of new alarms, unless their category sets one.
+  final WakeStyle defaultWakeStyle;
+
   String get effectiveTimerRingtone => timerRingtone ?? defaultRingtone;
 
   AppSettings copyWith({
@@ -53,6 +58,7 @@ class AppSettings {
     String? timerRingtone,
     bool clearTimerRingtone = false,
     bool? upcomingAlarmNotice,
+    WakeStyle? defaultWakeStyle,
   }) {
     return AppSettings(
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -65,6 +71,7 @@ class AppSettings {
       timerRingtone:
           clearTimerRingtone ? null : timerRingtone ?? this.timerRingtone,
       upcomingAlarmNotice: upcomingAlarmNotice ?? this.upcomingAlarmNotice,
+      defaultWakeStyle: defaultWakeStyle ?? this.defaultWakeStyle,
     );
   }
 }
