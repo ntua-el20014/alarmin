@@ -18,6 +18,7 @@ class AlarmModel {
     required this.createdAt,
     required this.updatedAt,
     this.nextOccurrenceAt,
+    this.skippedOccurrenceAt,
   }) : assert(reincarnationCount >= 0);
 
   final String id;
@@ -34,6 +35,11 @@ class AlarmModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? nextOccurrenceAt;
+
+  /// An occurrence the user skipped from the upcoming alarm notification;
+  /// scheduling moves past it. Cleared once it has passed or the alarm is
+  /// edited.
+  final DateTime? skippedOccurrenceAt;
 
   AlarmModel copyWith({
     String? id,
@@ -52,6 +58,8 @@ class AlarmModel {
     DateTime? updatedAt,
     DateTime? nextOccurrenceAt,
     bool clearNextOccurrenceAt = false,
+    DateTime? skippedOccurrenceAt,
+    bool clearSkippedOccurrenceAt = false,
   }) {
     return AlarmModel(
       id: id ?? this.id,
@@ -71,6 +79,9 @@ class AlarmModel {
       nextOccurrenceAt: clearNextOccurrenceAt
           ? null
           : nextOccurrenceAt ?? this.nextOccurrenceAt,
+      skippedOccurrenceAt: clearSkippedOccurrenceAt
+          ? null
+          : skippedOccurrenceAt ?? this.skippedOccurrenceAt,
     );
   }
 }

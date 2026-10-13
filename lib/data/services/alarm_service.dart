@@ -8,6 +8,7 @@ import '../repositories/reincarnation_repository.dart';
 import '../repositories/settings_repository.dart';
 import '../models/ringtone.dart';
 import 'alarm_scheduler.dart';
+import 'upcoming_alarm_notices.dart';
 
 /// Upper bound for [AlarmModel.reincarnationCount] (reminders per
 /// occurrence); each reminder owns a native id.
@@ -27,6 +28,11 @@ int followUpNativeId(String alarmId) => nativeAlarmId('$alarmId#next');
 int snoozeNativeId(String alarmId) => nativeAlarmId('$alarmId#snooze');
 int reminderNativeId(String alarmId, DateTime occurrence, int index) =>
     nativeAlarmId('$alarmId@${occurrence.millisecondsSinceEpoch}#r$index');
+
+/// Upcoming alarm notifications: slot 0 announces the primary occurrence,
+/// slot 1 the follow-up one.
+int noticeSlotId(String alarmId, int slot) =>
+    nativeAlarmId('$alarmId#notice$slot');
 
 /// Ids used by the earlier snooze-chain design, cleaned up on recovery.
 Iterable<int> _legacyNativeIds(String alarmId) => [
@@ -54,8 +60,10 @@ class AlarmService {
     required AlarmScheduler scheduler,
     CategoryRepository? categoryRepository,
     SettingsRepository? settingsRepository,
+    UpcomingAlarmNotices? notices,
     DateTime Function()? now,
   })  : _repository = repository,
+        _notices = notices,
         _settingsRepository = settingsRepository,
         _reincarnationRepository = reincarnationRepository,
         _categoryRepository = categoryRepository,
@@ -71,6 +79,7 @@ class AlarmService {
   final CategoryRepository? _categoryRepository;
   final SettingsRepository? _settingsRepository;
   final AlarmScheduler _scheduler;
+  final UpcomingAlarmNotices? _notices;
   final DateTime Function() _now;
 
   Future<void> _tail = Future.value();
@@ -81,6 +90,7 @@ class AlarmService {
   /// startup, whenever the app returns to the foreground, and after a
   /// category edit (notification titles carry the category emoji).
   Future<void> recover() => _serialized(() async {
+        await _applySkips();
         for (final alarm in await _repository.getAll()) {
           await _reconcile(alarm, recovering: true);
         }
@@ -95,7 +105,8 @@ class AlarmService {
 
   Future<AlarmModel> save(AlarmModel alarm) => _serialized(() async {
         await _cancelEverything(alarm.id);
-        return _scheduleRegular(alarm);
+        // An edit (or switching it back on) undoes a skip.
+        return _scheduleRegular(alarm.copyWith(clearSkippedOccurrenceAt: true));
       });
 
   Future<AlarmModel> setEnabled(AlarmModel alarm, bool isEnabled) {
@@ -175,6 +186,30 @@ class AlarmService {
         final current = await _repository.findById(alarm.id);
         if (current != null) await _advance(current);
       });
+
+  /// Moves alarms past occurrences skipped from the upcoming alarm
+  /// notification. Their native alarms were already cancelled natively.
+  Future<void> _applySkips() async {
+    final notices = _notices;
+    if (notices == null) return;
+    for (final skip in await notices.takeSkipped()) {
+      final alarm = await _repository.findById(skip.alarmId);
+      if (alarm == null) continue;
+      // Its reminders were cancelled with it; recovery must not re-arm them.
+      await _reincarnationRepository.delete(
+        ReincarnationRunModel.idFor(alarm.id, skip.occurrence),
+      );
+      if (alarm.recurrence.scheduleType == AlarmScheduleType.once) {
+        if (alarm.nextOccurrenceAt == skip.occurrence) {
+          await _finishOneTime(alarm);
+        }
+      } else if (skip.occurrence.isAfter(_now())) {
+        await _repository.save(
+          alarm.copyWith(skippedOccurrenceAt: skip.occurrence),
+        );
+      }
+    }
+  }
 
   /// After a ring was handled: moves a recurring alarm on to its next
   /// occurrence, or completes a one-time alarm once nothing is left to ring.
@@ -270,30 +305,80 @@ class AlarmService {
   /// reminders of past occurrences and any snooze untouched.
   Future<AlarmModel> _scheduleRegular(AlarmModel alarm) async {
     final now = _now();
-    final next = alarm.recurrence.nextOccurrenceAfter(now);
-    final updated = next == null
-        ? alarm.copyWith(clearNextOccurrenceAt: true)
-        : alarm.copyWith(nextOccurrenceAt: next);
+    var skipped = alarm.skippedOccurrenceAt;
+    if (skipped != null && !skipped.isAfter(now)) skipped = null;
+    var next = alarm.recurrence.nextOccurrenceAfter(now);
+    if (next != null && skipped != null && !next.isAfter(skipped)) {
+      next = alarm.recurrence.nextOccurrenceAfter(skipped);
+    }
+    final updated = alarm.copyWith(
+      nextOccurrenceAt: next,
+      clearNextOccurrenceAt: next == null,
+      skippedOccurrenceAt: skipped,
+      clearSkippedOccurrenceAt: skipped == null,
+    );
     await _repository.save(updated);
     await _cancelIds([
       primaryNativeId(updated.id),
       followUpNativeId(updated.id),
     ]);
-    if (!updated.isEnabled || next == null) return updated;
+    if (!updated.isEnabled || next == null) {
+      await _syncNotices(updated, const []);
+      return updated;
+    }
 
     final title = await _notificationTitle(updated);
     await _set(primaryNativeId(updated.id), next, updated,
         title: title, body: _occurrenceBody(updated));
     await _ensureReminders(updated, next, title);
+    DateTime? following;
     if (updated.recurrence.scheduleType != AlarmScheduleType.once) {
-      final following = updated.recurrence.nextOccurrenceAfter(next);
+      following = updated.recurrence.nextOccurrenceAfter(next);
       if (following != null) {
         await _set(followUpNativeId(updated.id), following, updated,
             title: title, body: _occurrenceBody(updated));
         await _ensureReminders(updated, following, title);
       }
     }
+    await _syncNotices(updated, [next, if (following != null) following],
+        title: title);
     return updated;
+  }
+
+  /// Announces [occurrences] (primary, then follow-up) in the notice slots,
+  /// or clears the slots when there is nothing to announce.
+  Future<void> _syncNotices(
+    AlarmModel alarm,
+    List<DateTime> occurrences, {
+    String? title,
+  }) async {
+    final notices = _notices;
+    if (notices == null) return;
+    final enabled = alarm.isEnabled &&
+        ((await _settingsRepository?.load())?.upcomingAlarmNotice ?? true);
+    for (var slot = 0; slot < 2; slot++) {
+      final slotId = noticeSlotId(alarm.id, slot);
+      if (!enabled || slot >= occurrences.length) {
+        await notices.cancel(slotId);
+        continue;
+      }
+      final occurrence = occurrences[slot];
+      final count =
+          alarm.reincarnationCount.clamp(0, maxReincarnationCount).toInt();
+      await notices.schedule(
+        UpcomingNotice(
+          slotId: slotId,
+          alarmId: alarm.id,
+          occurrence: occurrence,
+          title: title ?? await _notificationTitle(alarm),
+          nativeIds: [
+            slot == 0 ? primaryNativeId(alarm.id) : followUpNativeId(alarm.id),
+            for (var index = 1; index <= count; index++)
+              reminderNativeId(alarm.id, occurrence, index),
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _ensureReminders(
@@ -382,6 +467,9 @@ class AlarmService {
       for (final run in runs) ..._reminderIds(alarmId, run),
     ]);
     await _reincarnationRepository.deleteForAlarm(alarmId);
+    for (var slot = 0; slot < 2; slot++) {
+      await _notices?.cancel(noticeSlotId(alarmId, slot));
+    }
   }
 
   Future<void> _stopRinging(String alarmId, int? ringingNativeId) async {

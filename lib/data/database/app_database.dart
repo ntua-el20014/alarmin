@@ -36,6 +36,9 @@ class Alarms extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
   DateTimeColumn get nextOccurrenceAt => dateTime().nullable()();
+  // Added in schema v6; an occurrence skipped from the upcoming alarm
+  // notification, so rescheduling moves past it.
+  DateTimeColumn get skippedOccurrenceAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -104,6 +107,9 @@ class AppSettingsTable extends Table {
   IntColumn get themeMode => integer().withDefault(const Constant(0))();
   // Added in schema v5; null means "same as defaultRingtone".
   TextColumn get timerRingtone => text().nullable()();
+  // Added in schema v6; quiet notification an hour before each alarm.
+  BoolColumn get upcomingAlarmNotice =>
+      boolean().withDefault(const Constant(true))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -125,7 +131,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,7 +161,12 @@ class AppDatabase extends _$AppDatabase {
               'UPDATE alarms SET category_id = NULL '
               'WHERE category_id NOT IN (SELECT id FROM categories)',
             );
-            await migrator.alterTable(TableMigration(alarms));
+            await migrator.alterTable(
+              TableMigration(
+                alarms,
+                newColumns: [alarms.skippedOccurrenceAt],
+              ),
+            );
             await migrator.alterTable(TableMigration(alarmWeekdays));
             await migrator.alterTable(
               TableMigration(
@@ -181,6 +192,14 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             await migrator.addColumn(
                 appSettingsTable, appSettingsTable.timerRingtone);
+          }
+          if (from < 6) {
+            // Rebuilt with the column above when coming from v1.
+            if (from >= 2) {
+              await migrator.addColumn(alarms, alarms.skippedOccurrenceAt);
+            }
+            await migrator.addColumn(
+                appSettingsTable, appSettingsTable.upcomingAlarmNotice);
           }
         },
         beforeOpen: (details) async {

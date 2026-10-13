@@ -83,6 +83,11 @@ class MainActivity : FlutterActivity() {
         if (isAlarmRinging()) showOverLockScreen(true)
     }
 
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        UpcomingAlarms.onSkipped = null
+        super.cleanUpFlutterEngine(flutterEngine)
+    }
+
     override fun onStart() {
         super.onStart()
         AlarmRingingLiveData.instance.removeObservers(this)
@@ -91,6 +96,30 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        val upcoming = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "alarmin/upcoming")
+        upcoming.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "schedule" -> {
+                    val args = call.arguments as Map<*, *>
+                    UpcomingAlarms.schedule(
+                        this,
+                        slot = (args["slot"] as Number).toInt(),
+                        alarmId = args["alarmId"] as String,
+                        occurrence = (args["occurrence"] as Number).toLong(),
+                        title = args["title"] as String,
+                        nativeIds = (args["nativeIds"] as List<*>).map { (it as Number).toInt() },
+                    )
+                    result.success(null)
+                }
+                "cancel" -> {
+                    UpcomingAlarms.cancel(this, (call.arguments as Number).toInt())
+                    result.success(null)
+                }
+                "takeSkipped" -> result.success(UpcomingAlarms.takeSkipped(this))
+                else -> result.notImplemented()
+            }
+        }
+        UpcomingAlarms.onSkipped = { upcoming.invokeMethod("skipped", null) }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "alarmin/system")
             .setMethodCallHandler { call, result ->
                 when (call.method) {

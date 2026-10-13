@@ -28,6 +28,18 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <service android:name="com.gdelataillade.alarm.services.NotificationOnKillService" />
+        <!-- Upcoming alarm notification and its Skip button. -->
+        <receiver
+            android:name=".UpcomingAlarmReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".UpcomingAlarmBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"

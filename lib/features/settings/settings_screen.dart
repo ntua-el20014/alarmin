@@ -206,6 +206,16 @@ class _SettingsSection extends ConsumerWidget {
             },
           ),
         ),
+        SwitchListTile(
+          title: const Text('Notify 1 hour before alarms'),
+          subtitle: const Text('A silent notification with a Skip button'),
+          value: settings.upcomingAlarmNotice,
+          onChanged: (value) async {
+            await _save(ref, settings.copyWith(upcomingAlarmNotice: value));
+            // Shows or removes the notifications of every alarm.
+            await ref.read(alarmServiceProvider).recover();
+          },
+        ),
       ],
     );
   }

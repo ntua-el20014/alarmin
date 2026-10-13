@@ -19,6 +19,7 @@ import '../data/services/alarm_ring_handler.dart';
 import '../data/services/alarm_service.dart';
 import '../data/services/calendar_occurrence_service.dart';
 import '../data/services/sound_library.dart';
+import '../data/services/upcoming_alarm_notices.dart';
 import '../features/timer/timer_completion_service.dart';
 
 final databaseProvider = Provider<db.AppDatabase>((ref) {
@@ -52,6 +53,10 @@ final reincarnationRepositoryProvider =
   return ReincarnationRepository(ref.watch(databaseProvider));
 });
 
+final upcomingAlarmNoticesProvider = Provider<UpcomingAlarmNotices>((ref) {
+  return NativeUpcomingAlarmNotices();
+});
+
 final alarmServiceProvider = Provider<AlarmService>((ref) {
   return AlarmService(
     repository: ref.watch(alarmRepositoryProvider),
@@ -59,6 +64,7 @@ final alarmServiceProvider = Provider<AlarmService>((ref) {
     categoryRepository: ref.watch(categoryRepositoryProvider),
     settingsRepository: ref.watch(settingsRepositoryProvider),
     scheduler: ref.watch(alarmSchedulerProvider),
+    notices: ref.watch(upcomingAlarmNoticesProvider),
   );
 });
 

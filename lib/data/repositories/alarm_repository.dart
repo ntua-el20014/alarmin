@@ -110,6 +110,7 @@ class AlarmRepository {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       nextOccurrenceAt: row.nextOccurrenceAt,
+      skippedOccurrenceAt: row.skippedOccurrenceAt,
     );
   }
 
@@ -135,6 +136,7 @@ class AlarmRepository {
       createdAt: alarm.createdAt,
       updatedAt: alarm.updatedAt,
       nextOccurrenceAt: Value(alarm.nextOccurrenceAt),
+      skippedOccurrenceAt: Value(alarm.skippedOccurrenceAt),
     );
   }
 }

@@ -26,6 +26,12 @@ Future<void> main() async {
   // Listen before recovering: when the app is launched by a ringing alarm,
   // the plugin replays that ring as soon as someone subscribes.
   container.read(alarmRingHandlerProvider).start();
+  // Skip pressed on an upcoming alarm notification while the app runs.
+  container.read(upcomingAlarmNoticesProvider).skipEvents.listen((_) {
+    unawaited(alarmService.recover().catchError((Object error) {
+      debugPrint('Applying a skipped alarm failed: $error');
+    }));
+  });
   unawaited(
     alarmService.recover().catchError((Object error, StackTrace stackTrace) {
       debugPrint('Alarm recovery failed: $error\n$stackTrace');

@@ -15,6 +15,7 @@ class AppSettings {
     required this.defaultSnoozeDuration,
     this.themeMode = AppThemeMode.dark,
     this.timerRingtone,
+    this.upcomingAlarmNotice = true,
   });
 
   const AppSettings.defaults()
@@ -24,7 +25,8 @@ class AppSettings {
         defaultVibration = VibrationSetting.standard,
         defaultSnoozeDuration = const Duration(minutes: 10),
         themeMode = AppThemeMode.dark,
-        timerRingtone = null;
+        timerRingtone = null,
+        upcomingAlarmNotice = true;
 
   final TimePickerStyle timePickerStyle;
   final bool isGroupedView;
@@ -35,6 +37,9 @@ class AppSettings {
 
   /// Sound for the timer; null means [defaultRingtone].
   final String? timerRingtone;
+
+  /// Quiet notification an hour before each alarm, with a Skip button.
+  final bool upcomingAlarmNotice;
 
   String get effectiveTimerRingtone => timerRingtone ?? defaultRingtone;
 
@@ -47,6 +52,7 @@ class AppSettings {
     AppThemeMode? themeMode,
     String? timerRingtone,
     bool clearTimerRingtone = false,
+    bool? upcomingAlarmNotice,
   }) {
     return AppSettings(
       timePickerStyle: timePickerStyle ?? this.timePickerStyle,
@@ -58,6 +64,7 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       timerRingtone:
           clearTimerRingtone ? null : timerRingtone ?? this.timerRingtone,
+      upcomingAlarmNotice: upcomingAlarmNotice ?? this.upcomingAlarmNotice,
     );
   }
 }
