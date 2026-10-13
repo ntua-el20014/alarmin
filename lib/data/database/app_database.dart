@@ -12,6 +12,10 @@ class Categories extends Table {
   TextColumn get defaultRingtone => text().nullable()();
   IntColumn get defaultVibration => integer().nullable()();
   IntColumn get defaultWakeStyle => integer().nullable()();
+  // Added in schema v8; null type means no mission.
+  IntColumn get defaultMissionType => integer().nullable()();
+  IntColumn get defaultMissionDifficulty => integer().nullable()();
+  IntColumn get defaultMissionCount => integer().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -46,6 +50,10 @@ class Alarms extends Table {
   DateTimeColumn get skippedOccurrenceAt => dateTime().nullable()();
   // Added in schema v7; WakeStyle index, 0 = normal.
   IntColumn get wakeStyle => integer().withDefault(const Constant(0))();
+  // Added in schema v8; Mission fields, type 0 = none.
+  IntColumn get missionType => integer().withDefault(const Constant(0))();
+  IntColumn get missionDifficulty => integer().withDefault(const Constant(1))();
+  IntColumn get missionCount => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -118,8 +126,7 @@ class AppSettingsTable extends Table {
   BoolColumn get upcomingAlarmNotice =>
       boolean().withDefault(const Constant(true))();
   // Added in schema v7; WakeStyle index for new alarms.
-  IntColumn get defaultWakeStyle =>
-      integer().withDefault(const Constant(0))();
+  IntColumn get defaultWakeStyle => integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -141,7 +148,7 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'alarmin'));
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -174,7 +181,13 @@ class AppDatabase extends _$AppDatabase {
             await migrator.alterTable(
               TableMigration(
                 alarms,
-                newColumns: [alarms.skippedOccurrenceAt, alarms.wakeStyle],
+                newColumns: [
+                  alarms.skippedOccurrenceAt,
+                  alarms.wakeStyle,
+                  alarms.missionType,
+                  alarms.missionDifficulty,
+                  alarms.missionCount,
+                ],
               ),
             );
             await migrator.alterTable(TableMigration(alarmWeekdays));
@@ -218,6 +231,18 @@ class AppDatabase extends _$AppDatabase {
             await migrator.addColumn(categories, categories.defaultWakeStyle);
             await migrator.addColumn(
                 appSettingsTable, appSettingsTable.defaultWakeStyle);
+          }
+          if (from < 8) {
+            if (from >= 2) {
+              await migrator.addColumn(alarms, alarms.missionType);
+              await migrator.addColumn(alarms, alarms.missionDifficulty);
+              await migrator.addColumn(alarms, alarms.missionCount);
+            }
+            await migrator.addColumn(categories, categories.defaultMissionType);
+            await migrator.addColumn(
+                categories, categories.defaultMissionDifficulty);
+            await migrator.addColumn(
+                categories, categories.defaultMissionCount);
           }
         },
         beforeOpen: (details) async {

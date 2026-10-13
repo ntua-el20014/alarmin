@@ -42,6 +42,24 @@ class $CategoriesTable extends Categories
   late final GeneratedColumn<int> defaultWakeStyle = GeneratedColumn<int>(
       'default_wake_style', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultMissionTypeMeta =
+      const VerificationMeta('defaultMissionType');
+  @override
+  late final GeneratedColumn<int> defaultMissionType = GeneratedColumn<int>(
+      'default_mission_type', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultMissionDifficultyMeta =
+      const VerificationMeta('defaultMissionDifficulty');
+  @override
+  late final GeneratedColumn<int> defaultMissionDifficulty =
+      GeneratedColumn<int>('default_mission_difficulty', aliasedName, true,
+          type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _defaultMissionCountMeta =
+      const VerificationMeta('defaultMissionCount');
+  @override
+  late final GeneratedColumn<int> defaultMissionCount = GeneratedColumn<int>(
+      'default_mission_count', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -62,6 +80,9 @@ class $CategoriesTable extends Categories
         defaultRingtone,
         defaultVibration,
         defaultWakeStyle,
+        defaultMissionType,
+        defaultMissionDifficulty,
+        defaultMissionCount,
         createdAt,
         updatedAt
       ];
@@ -110,6 +131,25 @@ class $CategoriesTable extends Categories
           defaultWakeStyle.isAcceptableOrUnknown(
               data['default_wake_style']!, _defaultWakeStyleMeta));
     }
+    if (data.containsKey('default_mission_type')) {
+      context.handle(
+          _defaultMissionTypeMeta,
+          defaultMissionType.isAcceptableOrUnknown(
+              data['default_mission_type']!, _defaultMissionTypeMeta));
+    }
+    if (data.containsKey('default_mission_difficulty')) {
+      context.handle(
+          _defaultMissionDifficultyMeta,
+          defaultMissionDifficulty.isAcceptableOrUnknown(
+              data['default_mission_difficulty']!,
+              _defaultMissionDifficultyMeta));
+    }
+    if (data.containsKey('default_mission_count')) {
+      context.handle(
+          _defaultMissionCountMeta,
+          defaultMissionCount.isAcceptableOrUnknown(
+              data['default_mission_count']!, _defaultMissionCountMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -143,6 +183,13 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.int, data['${effectivePrefix}default_vibration']),
       defaultWakeStyle: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}default_wake_style']),
+      defaultMissionType: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}default_mission_type']),
+      defaultMissionDifficulty: attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}default_mission_difficulty']),
+      defaultMissionCount: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}default_mission_count']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -163,6 +210,9 @@ class Category extends DataClass implements Insertable<Category> {
   final String? defaultRingtone;
   final int? defaultVibration;
   final int? defaultWakeStyle;
+  final int? defaultMissionType;
+  final int? defaultMissionDifficulty;
+  final int? defaultMissionCount;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Category(
@@ -172,6 +222,9 @@ class Category extends DataClass implements Insertable<Category> {
       this.defaultRingtone,
       this.defaultVibration,
       this.defaultWakeStyle,
+      this.defaultMissionType,
+      this.defaultMissionDifficulty,
+      this.defaultMissionCount,
       required this.createdAt,
       required this.updatedAt});
   @override
@@ -188,6 +241,16 @@ class Category extends DataClass implements Insertable<Category> {
     }
     if (!nullToAbsent || defaultWakeStyle != null) {
       map['default_wake_style'] = Variable<int>(defaultWakeStyle);
+    }
+    if (!nullToAbsent || defaultMissionType != null) {
+      map['default_mission_type'] = Variable<int>(defaultMissionType);
+    }
+    if (!nullToAbsent || defaultMissionDifficulty != null) {
+      map['default_mission_difficulty'] =
+          Variable<int>(defaultMissionDifficulty);
+    }
+    if (!nullToAbsent || defaultMissionCount != null) {
+      map['default_mission_count'] = Variable<int>(defaultMissionCount);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -208,6 +271,15 @@ class Category extends DataClass implements Insertable<Category> {
       defaultWakeStyle: defaultWakeStyle == null && nullToAbsent
           ? const Value.absent()
           : Value(defaultWakeStyle),
+      defaultMissionType: defaultMissionType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultMissionType),
+      defaultMissionDifficulty: defaultMissionDifficulty == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultMissionDifficulty),
+      defaultMissionCount: defaultMissionCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultMissionCount),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -223,6 +295,11 @@ class Category extends DataClass implements Insertable<Category> {
       defaultRingtone: serializer.fromJson<String?>(json['defaultRingtone']),
       defaultVibration: serializer.fromJson<int?>(json['defaultVibration']),
       defaultWakeStyle: serializer.fromJson<int?>(json['defaultWakeStyle']),
+      defaultMissionType: serializer.fromJson<int?>(json['defaultMissionType']),
+      defaultMissionDifficulty:
+          serializer.fromJson<int?>(json['defaultMissionDifficulty']),
+      defaultMissionCount:
+          serializer.fromJson<int?>(json['defaultMissionCount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -237,6 +314,10 @@ class Category extends DataClass implements Insertable<Category> {
       'defaultRingtone': serializer.toJson<String?>(defaultRingtone),
       'defaultVibration': serializer.toJson<int?>(defaultVibration),
       'defaultWakeStyle': serializer.toJson<int?>(defaultWakeStyle),
+      'defaultMissionType': serializer.toJson<int?>(defaultMissionType),
+      'defaultMissionDifficulty':
+          serializer.toJson<int?>(defaultMissionDifficulty),
+      'defaultMissionCount': serializer.toJson<int?>(defaultMissionCount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -249,6 +330,9 @@ class Category extends DataClass implements Insertable<Category> {
           Value<String?> defaultRingtone = const Value.absent(),
           Value<int?> defaultVibration = const Value.absent(),
           Value<int?> defaultWakeStyle = const Value.absent(),
+          Value<int?> defaultMissionType = const Value.absent(),
+          Value<int?> defaultMissionDifficulty = const Value.absent(),
+          Value<int?> defaultMissionCount = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Category(
@@ -264,6 +348,15 @@ class Category extends DataClass implements Insertable<Category> {
         defaultWakeStyle: defaultWakeStyle.present
             ? defaultWakeStyle.value
             : this.defaultWakeStyle,
+        defaultMissionType: defaultMissionType.present
+            ? defaultMissionType.value
+            : this.defaultMissionType,
+        defaultMissionDifficulty: defaultMissionDifficulty.present
+            ? defaultMissionDifficulty.value
+            : this.defaultMissionDifficulty,
+        defaultMissionCount: defaultMissionCount.present
+            ? defaultMissionCount.value
+            : this.defaultMissionCount,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -281,6 +374,15 @@ class Category extends DataClass implements Insertable<Category> {
       defaultWakeStyle: data.defaultWakeStyle.present
           ? data.defaultWakeStyle.value
           : this.defaultWakeStyle,
+      defaultMissionType: data.defaultMissionType.present
+          ? data.defaultMissionType.value
+          : this.defaultMissionType,
+      defaultMissionDifficulty: data.defaultMissionDifficulty.present
+          ? data.defaultMissionDifficulty.value
+          : this.defaultMissionDifficulty,
+      defaultMissionCount: data.defaultMissionCount.present
+          ? data.defaultMissionCount.value
+          : this.defaultMissionCount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -295,6 +397,9 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('defaultRingtone: $defaultRingtone, ')
           ..write('defaultVibration: $defaultVibration, ')
           ..write('defaultWakeStyle: $defaultWakeStyle, ')
+          ..write('defaultMissionType: $defaultMissionType, ')
+          ..write('defaultMissionDifficulty: $defaultMissionDifficulty, ')
+          ..write('defaultMissionCount: $defaultMissionCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -302,8 +407,18 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, emoji, defaultRingtone,
-      defaultVibration, defaultWakeStyle, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      name,
+      emoji,
+      defaultRingtone,
+      defaultVibration,
+      defaultWakeStyle,
+      defaultMissionType,
+      defaultMissionDifficulty,
+      defaultMissionCount,
+      createdAt,
+      updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -314,6 +429,9 @@ class Category extends DataClass implements Insertable<Category> {
           other.defaultRingtone == this.defaultRingtone &&
           other.defaultVibration == this.defaultVibration &&
           other.defaultWakeStyle == this.defaultWakeStyle &&
+          other.defaultMissionType == this.defaultMissionType &&
+          other.defaultMissionDifficulty == this.defaultMissionDifficulty &&
+          other.defaultMissionCount == this.defaultMissionCount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -325,6 +443,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<String?> defaultRingtone;
   final Value<int?> defaultVibration;
   final Value<int?> defaultWakeStyle;
+  final Value<int?> defaultMissionType;
+  final Value<int?> defaultMissionDifficulty;
+  final Value<int?> defaultMissionCount;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -335,6 +456,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.defaultRingtone = const Value.absent(),
     this.defaultVibration = const Value.absent(),
     this.defaultWakeStyle = const Value.absent(),
+    this.defaultMissionType = const Value.absent(),
+    this.defaultMissionDifficulty = const Value.absent(),
+    this.defaultMissionCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -346,6 +470,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.defaultRingtone = const Value.absent(),
     this.defaultVibration = const Value.absent(),
     this.defaultWakeStyle = const Value.absent(),
+    this.defaultMissionType = const Value.absent(),
+    this.defaultMissionDifficulty = const Value.absent(),
+    this.defaultMissionCount = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -361,6 +488,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<String>? defaultRingtone,
     Expression<int>? defaultVibration,
     Expression<int>? defaultWakeStyle,
+    Expression<int>? defaultMissionType,
+    Expression<int>? defaultMissionDifficulty,
+    Expression<int>? defaultMissionCount,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -372,6 +502,12 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (defaultRingtone != null) 'default_ringtone': defaultRingtone,
       if (defaultVibration != null) 'default_vibration': defaultVibration,
       if (defaultWakeStyle != null) 'default_wake_style': defaultWakeStyle,
+      if (defaultMissionType != null)
+        'default_mission_type': defaultMissionType,
+      if (defaultMissionDifficulty != null)
+        'default_mission_difficulty': defaultMissionDifficulty,
+      if (defaultMissionCount != null)
+        'default_mission_count': defaultMissionCount,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -385,6 +521,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       Value<String?>? defaultRingtone,
       Value<int?>? defaultVibration,
       Value<int?>? defaultWakeStyle,
+      Value<int?>? defaultMissionType,
+      Value<int?>? defaultMissionDifficulty,
+      Value<int?>? defaultMissionCount,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<int>? rowid}) {
@@ -395,6 +534,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       defaultRingtone: defaultRingtone ?? this.defaultRingtone,
       defaultVibration: defaultVibration ?? this.defaultVibration,
       defaultWakeStyle: defaultWakeStyle ?? this.defaultWakeStyle,
+      defaultMissionType: defaultMissionType ?? this.defaultMissionType,
+      defaultMissionDifficulty:
+          defaultMissionDifficulty ?? this.defaultMissionDifficulty,
+      defaultMissionCount: defaultMissionCount ?? this.defaultMissionCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -422,6 +565,16 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (defaultWakeStyle.present) {
       map['default_wake_style'] = Variable<int>(defaultWakeStyle.value);
     }
+    if (defaultMissionType.present) {
+      map['default_mission_type'] = Variable<int>(defaultMissionType.value);
+    }
+    if (defaultMissionDifficulty.present) {
+      map['default_mission_difficulty'] =
+          Variable<int>(defaultMissionDifficulty.value);
+    }
+    if (defaultMissionCount.present) {
+      map['default_mission_count'] = Variable<int>(defaultMissionCount.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -443,6 +596,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('defaultRingtone: $defaultRingtone, ')
           ..write('defaultVibration: $defaultVibration, ')
           ..write('defaultWakeStyle: $defaultWakeStyle, ')
+          ..write('defaultMissionType: $defaultMissionType, ')
+          ..write('defaultMissionDifficulty: $defaultMissionDifficulty, ')
+          ..write('defaultMissionCount: $defaultMissionCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -591,6 +747,30 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
+  static const VerificationMeta _missionTypeMeta =
+      const VerificationMeta('missionType');
+  @override
+  late final GeneratedColumn<int> missionType = GeneratedColumn<int>(
+      'mission_type', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _missionDifficultyMeta =
+      const VerificationMeta('missionDifficulty');
+  @override
+  late final GeneratedColumn<int> missionDifficulty = GeneratedColumn<int>(
+      'mission_difficulty', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _missionCountMeta =
+      const VerificationMeta('missionCount');
+  @override
+  late final GeneratedColumn<int> missionCount = GeneratedColumn<int>(
+      'mission_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -613,7 +793,10 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
         updatedAt,
         nextOccurrenceAt,
         skippedOccurrenceAt,
-        wakeStyle
+        wakeStyle,
+        missionType,
+        missionDifficulty,
+        missionCount
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -761,6 +944,24 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
       context.handle(_wakeStyleMeta,
           wakeStyle.isAcceptableOrUnknown(data['wake_style']!, _wakeStyleMeta));
     }
+    if (data.containsKey('mission_type')) {
+      context.handle(
+          _missionTypeMeta,
+          missionType.isAcceptableOrUnknown(
+              data['mission_type']!, _missionTypeMeta));
+    }
+    if (data.containsKey('mission_difficulty')) {
+      context.handle(
+          _missionDifficultyMeta,
+          missionDifficulty.isAcceptableOrUnknown(
+              data['mission_difficulty']!, _missionDifficultyMeta));
+    }
+    if (data.containsKey('mission_count')) {
+      context.handle(
+          _missionCountMeta,
+          missionCount.isAcceptableOrUnknown(
+              data['mission_count']!, _missionCountMeta));
+    }
     return context;
   }
 
@@ -814,6 +1015,12 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
           data['${effectivePrefix}skipped_occurrence_at']),
       wakeStyle: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}wake_style'])!,
+      missionType: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}mission_type'])!,
+      missionDifficulty: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}mission_difficulty'])!,
+      missionCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}mission_count'])!,
     );
   }
 
@@ -845,6 +1052,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
   final DateTime? nextOccurrenceAt;
   final DateTime? skippedOccurrenceAt;
   final int wakeStyle;
+  final int missionType;
+  final int missionDifficulty;
+  final int missionCount;
   const Alarm(
       {required this.id,
       required this.title,
@@ -866,7 +1076,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       required this.updatedAt,
       this.nextOccurrenceAt,
       this.skippedOccurrenceAt,
-      required this.wakeStyle});
+      required this.wakeStyle,
+      required this.missionType,
+      required this.missionDifficulty,
+      required this.missionCount});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -906,6 +1119,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       map['skipped_occurrence_at'] = Variable<DateTime>(skippedOccurrenceAt);
     }
     map['wake_style'] = Variable<int>(wakeStyle);
+    map['mission_type'] = Variable<int>(missionType);
+    map['mission_difficulty'] = Variable<int>(missionDifficulty);
+    map['mission_count'] = Variable<int>(missionCount);
     return map;
   }
 
@@ -946,6 +1162,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ? const Value.absent()
           : Value(skippedOccurrenceAt),
       wakeStyle: Value(wakeStyle),
+      missionType: Value(missionType),
+      missionDifficulty: Value(missionDifficulty),
+      missionCount: Value(missionCount),
     );
   }
 
@@ -979,6 +1198,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       skippedOccurrenceAt:
           serializer.fromJson<DateTime?>(json['skippedOccurrenceAt']),
       wakeStyle: serializer.fromJson<int>(json['wakeStyle']),
+      missionType: serializer.fromJson<int>(json['missionType']),
+      missionDifficulty: serializer.fromJson<int>(json['missionDifficulty']),
+      missionCount: serializer.fromJson<int>(json['missionCount']),
     );
   }
   @override
@@ -1007,6 +1229,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       'nextOccurrenceAt': serializer.toJson<DateTime?>(nextOccurrenceAt),
       'skippedOccurrenceAt': serializer.toJson<DateTime?>(skippedOccurrenceAt),
       'wakeStyle': serializer.toJson<int>(wakeStyle),
+      'missionType': serializer.toJson<int>(missionType),
+      'missionDifficulty': serializer.toJson<int>(missionDifficulty),
+      'missionCount': serializer.toJson<int>(missionCount),
     };
   }
 
@@ -1031,7 +1256,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           DateTime? updatedAt,
           Value<DateTime?> nextOccurrenceAt = const Value.absent(),
           Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
-          int? wakeStyle}) =>
+          int? wakeStyle,
+          int? missionType,
+          int? missionDifficulty,
+          int? missionCount}) =>
       Alarm(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -1066,6 +1294,9 @@ class Alarm extends DataClass implements Insertable<Alarm> {
             ? skippedOccurrenceAt.value
             : this.skippedOccurrenceAt,
         wakeStyle: wakeStyle ?? this.wakeStyle,
+        missionType: missionType ?? this.missionType,
+        missionDifficulty: missionDifficulty ?? this.missionDifficulty,
+        missionCount: missionCount ?? this.missionCount,
       );
   Alarm copyWithCompanion(AlarmsCompanion data) {
     return Alarm(
@@ -1113,6 +1344,14 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ? data.skippedOccurrenceAt.value
           : this.skippedOccurrenceAt,
       wakeStyle: data.wakeStyle.present ? data.wakeStyle.value : this.wakeStyle,
+      missionType:
+          data.missionType.present ? data.missionType.value : this.missionType,
+      missionDifficulty: data.missionDifficulty.present
+          ? data.missionDifficulty.value
+          : this.missionDifficulty,
+      missionCount: data.missionCount.present
+          ? data.missionCount.value
+          : this.missionCount,
     );
   }
 
@@ -1140,7 +1379,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ..write('updatedAt: $updatedAt, ')
           ..write('nextOccurrenceAt: $nextOccurrenceAt, ')
           ..write('skippedOccurrenceAt: $skippedOccurrenceAt, ')
-          ..write('wakeStyle: $wakeStyle')
+          ..write('wakeStyle: $wakeStyle, ')
+          ..write('missionType: $missionType, ')
+          ..write('missionDifficulty: $missionDifficulty, ')
+          ..write('missionCount: $missionCount')
           ..write(')'))
         .toString();
   }
@@ -1167,7 +1409,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
         updatedAt,
         nextOccurrenceAt,
         skippedOccurrenceAt,
-        wakeStyle
+        wakeStyle,
+        missionType,
+        missionDifficulty,
+        missionCount
       ]);
   @override
   bool operator ==(Object other) =>
@@ -1194,7 +1439,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           other.updatedAt == this.updatedAt &&
           other.nextOccurrenceAt == this.nextOccurrenceAt &&
           other.skippedOccurrenceAt == this.skippedOccurrenceAt &&
-          other.wakeStyle == this.wakeStyle);
+          other.wakeStyle == this.wakeStyle &&
+          other.missionType == this.missionType &&
+          other.missionDifficulty == this.missionDifficulty &&
+          other.missionCount == this.missionCount);
 }
 
 class AlarmsCompanion extends UpdateCompanion<Alarm> {
@@ -1219,6 +1467,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
   final Value<DateTime?> nextOccurrenceAt;
   final Value<DateTime?> skippedOccurrenceAt;
   final Value<int> wakeStyle;
+  final Value<int> missionType;
+  final Value<int> missionDifficulty;
+  final Value<int> missionCount;
   final Value<int> rowid;
   const AlarmsCompanion({
     this.id = const Value.absent(),
@@ -1242,6 +1493,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.nextOccurrenceAt = const Value.absent(),
     this.skippedOccurrenceAt = const Value.absent(),
     this.wakeStyle = const Value.absent(),
+    this.missionType = const Value.absent(),
+    this.missionDifficulty = const Value.absent(),
+    this.missionCount = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AlarmsCompanion.insert({
@@ -1266,6 +1520,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.nextOccurrenceAt = const Value.absent(),
     this.skippedOccurrenceAt = const Value.absent(),
     this.wakeStyle = const Value.absent(),
+    this.missionType = const Value.absent(),
+    this.missionDifficulty = const Value.absent(),
+    this.missionCount = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -1302,6 +1559,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     Expression<DateTime>? nextOccurrenceAt,
     Expression<DateTime>? skippedOccurrenceAt,
     Expression<int>? wakeStyle,
+    Expression<int>? missionType,
+    Expression<int>? missionDifficulty,
+    Expression<int>? missionCount,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1329,6 +1589,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       if (skippedOccurrenceAt != null)
         'skipped_occurrence_at': skippedOccurrenceAt,
       if (wakeStyle != null) 'wake_style': wakeStyle,
+      if (missionType != null) 'mission_type': missionType,
+      if (missionDifficulty != null) 'mission_difficulty': missionDifficulty,
+      if (missionCount != null) 'mission_count': missionCount,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1355,6 +1618,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       Value<DateTime?>? nextOccurrenceAt,
       Value<DateTime?>? skippedOccurrenceAt,
       Value<int>? wakeStyle,
+      Value<int>? missionType,
+      Value<int>? missionDifficulty,
+      Value<int>? missionCount,
       Value<int>? rowid}) {
     return AlarmsCompanion(
       id: id ?? this.id,
@@ -1380,6 +1646,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       nextOccurrenceAt: nextOccurrenceAt ?? this.nextOccurrenceAt,
       skippedOccurrenceAt: skippedOccurrenceAt ?? this.skippedOccurrenceAt,
       wakeStyle: wakeStyle ?? this.wakeStyle,
+      missionType: missionType ?? this.missionType,
+      missionDifficulty: missionDifficulty ?? this.missionDifficulty,
+      missionCount: missionCount ?? this.missionCount,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1453,6 +1722,15 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     if (wakeStyle.present) {
       map['wake_style'] = Variable<int>(wakeStyle.value);
     }
+    if (missionType.present) {
+      map['mission_type'] = Variable<int>(missionType.value);
+    }
+    if (missionDifficulty.present) {
+      map['mission_difficulty'] = Variable<int>(missionDifficulty.value);
+    }
+    if (missionCount.present) {
+      map['mission_count'] = Variable<int>(missionCount.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1484,6 +1762,9 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
           ..write('nextOccurrenceAt: $nextOccurrenceAt, ')
           ..write('skippedOccurrenceAt: $skippedOccurrenceAt, ')
           ..write('wakeStyle: $wakeStyle, ')
+          ..write('missionType: $missionType, ')
+          ..write('missionDifficulty: $missionDifficulty, ')
+          ..write('missionCount: $missionCount, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3540,6 +3821,9 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<String?> defaultRingtone,
   Value<int?> defaultVibration,
   Value<int?> defaultWakeStyle,
+  Value<int?> defaultMissionType,
+  Value<int?> defaultMissionDifficulty,
+  Value<int?> defaultMissionCount,
   required DateTime createdAt,
   required DateTime updatedAt,
   Value<int> rowid,
@@ -3551,6 +3835,9 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<String?> defaultRingtone,
   Value<int?> defaultVibration,
   Value<int?> defaultWakeStyle,
+  Value<int?> defaultMissionType,
+  Value<int?> defaultMissionDifficulty,
+  Value<int?> defaultMissionCount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<int> rowid,
@@ -3603,6 +3890,18 @@ class $$CategoriesTableFilterComposer
 
   ColumnFilters<int> get defaultWakeStyle => $composableBuilder(
       column: $table.defaultWakeStyle,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultMissionType => $composableBuilder(
+      column: $table.defaultMissionType,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultMissionDifficulty => $composableBuilder(
+      column: $table.defaultMissionDifficulty,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get defaultMissionCount => $composableBuilder(
+      column: $table.defaultMissionCount,
       builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
@@ -3663,6 +3962,18 @@ class $$CategoriesTableOrderingComposer
       column: $table.defaultWakeStyle,
       builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get defaultMissionType => $composableBuilder(
+      column: $table.defaultMissionType,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get defaultMissionDifficulty => $composableBuilder(
+      column: $table.defaultMissionDifficulty,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get defaultMissionCount => $composableBuilder(
+      column: $table.defaultMissionCount,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 
@@ -3696,6 +4007,15 @@ class $$CategoriesTableAnnotationComposer
 
   GeneratedColumn<int> get defaultWakeStyle => $composableBuilder(
       column: $table.defaultWakeStyle, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultMissionType => $composableBuilder(
+      column: $table.defaultMissionType, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultMissionDifficulty => $composableBuilder(
+      column: $table.defaultMissionDifficulty, builder: (column) => column);
+
+  GeneratedColumn<int> get defaultMissionCount => $composableBuilder(
+      column: $table.defaultMissionCount, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3754,6 +4074,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String?> defaultRingtone = const Value.absent(),
             Value<int?> defaultVibration = const Value.absent(),
             Value<int?> defaultWakeStyle = const Value.absent(),
+            Value<int?> defaultMissionType = const Value.absent(),
+            Value<int?> defaultMissionDifficulty = const Value.absent(),
+            Value<int?> defaultMissionCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
@@ -3765,6 +4088,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             defaultRingtone: defaultRingtone,
             defaultVibration: defaultVibration,
             defaultWakeStyle: defaultWakeStyle,
+            defaultMissionType: defaultMissionType,
+            defaultMissionDifficulty: defaultMissionDifficulty,
+            defaultMissionCount: defaultMissionCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3776,6 +4102,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<String?> defaultRingtone = const Value.absent(),
             Value<int?> defaultVibration = const Value.absent(),
             Value<int?> defaultWakeStyle = const Value.absent(),
+            Value<int?> defaultMissionType = const Value.absent(),
+            Value<int?> defaultMissionDifficulty = const Value.absent(),
+            Value<int?> defaultMissionCount = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
             Value<int> rowid = const Value.absent(),
@@ -3787,6 +4116,9 @@ class $$CategoriesTableTableManager extends RootTableManager<
             defaultRingtone: defaultRingtone,
             defaultVibration: defaultVibration,
             defaultWakeStyle: defaultWakeStyle,
+            defaultMissionType: defaultMissionType,
+            defaultMissionDifficulty: defaultMissionDifficulty,
+            defaultMissionCount: defaultMissionCount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             rowid: rowid,
@@ -3858,6 +4190,9 @@ typedef $$AlarmsTableCreateCompanionBuilder = AlarmsCompanion Function({
   Value<DateTime?> nextOccurrenceAt,
   Value<DateTime?> skippedOccurrenceAt,
   Value<int> wakeStyle,
+  Value<int> missionType,
+  Value<int> missionDifficulty,
+  Value<int> missionCount,
   Value<int> rowid,
 });
 typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
@@ -3882,6 +4217,9 @@ typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
   Value<DateTime?> nextOccurrenceAt,
   Value<DateTime?> skippedOccurrenceAt,
   Value<int> wakeStyle,
+  Value<int> missionType,
+  Value<int> missionDifficulty,
+  Value<int> missionCount,
   Value<int> rowid,
 });
 
@@ -4010,6 +4348,16 @@ class $$AlarmsTableFilterComposer
 
   ColumnFilters<int> get wakeStyle => $composableBuilder(
       column: $table.wakeStyle, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get missionType => $composableBuilder(
+      column: $table.missionType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get missionDifficulty => $composableBuilder(
+      column: $table.missionDifficulty,
+      builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get missionCount => $composableBuilder(
+      column: $table.missionCount, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -4154,6 +4502,17 @@ class $$AlarmsTableOrderingComposer
   ColumnOrderings<int> get wakeStyle => $composableBuilder(
       column: $table.wakeStyle, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get missionType => $composableBuilder(
+      column: $table.missionType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get missionDifficulty => $composableBuilder(
+      column: $table.missionDifficulty,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get missionCount => $composableBuilder(
+      column: $table.missionCount,
+      builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4243,6 +4602,15 @@ class $$AlarmsTableAnnotationComposer
 
   GeneratedColumn<int> get wakeStyle =>
       $composableBuilder(column: $table.wakeStyle, builder: (column) => column);
+
+  GeneratedColumn<int> get missionType => $composableBuilder(
+      column: $table.missionType, builder: (column) => column);
+
+  GeneratedColumn<int> get missionDifficulty => $composableBuilder(
+      column: $table.missionDifficulty, builder: (column) => column);
+
+  GeneratedColumn<int> get missionCount => $composableBuilder(
+      column: $table.missionCount, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -4355,6 +4723,9 @@ class $$AlarmsTableTableManager extends RootTableManager<
             Value<DateTime?> nextOccurrenceAt = const Value.absent(),
             Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
             Value<int> wakeStyle = const Value.absent(),
+            Value<int> missionType = const Value.absent(),
+            Value<int> missionDifficulty = const Value.absent(),
+            Value<int> missionCount = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               AlarmsCompanion(
@@ -4379,6 +4750,9 @@ class $$AlarmsTableTableManager extends RootTableManager<
             nextOccurrenceAt: nextOccurrenceAt,
             skippedOccurrenceAt: skippedOccurrenceAt,
             wakeStyle: wakeStyle,
+            missionType: missionType,
+            missionDifficulty: missionDifficulty,
+            missionCount: missionCount,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -4403,6 +4777,9 @@ class $$AlarmsTableTableManager extends RootTableManager<
             Value<DateTime?> nextOccurrenceAt = const Value.absent(),
             Value<DateTime?> skippedOccurrenceAt = const Value.absent(),
             Value<int> wakeStyle = const Value.absent(),
+            Value<int> missionType = const Value.absent(),
+            Value<int> missionDifficulty = const Value.absent(),
+            Value<int> missionCount = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               AlarmsCompanion.insert(
@@ -4427,6 +4804,9 @@ class $$AlarmsTableTableManager extends RootTableManager<
             nextOccurrenceAt: nextOccurrenceAt,
             skippedOccurrenceAt: skippedOccurrenceAt,
             wakeStyle: wakeStyle,
+            missionType: missionType,
+            missionDifficulty: missionDifficulty,
+            missionCount: missionCount,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

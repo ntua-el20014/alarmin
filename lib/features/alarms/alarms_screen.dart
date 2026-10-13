@@ -6,10 +6,12 @@ import '../../app/providers.dart';
 import '../../data/models/alarm_model.dart';
 import '../../data/models/app_settings.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/mission.dart';
 import '../../data/models/recurrence_rule.dart';
 import '../../data/models/ringtone.dart';
 import '../../data/services/alarm_service.dart';
 import '../categories/category_dialog.dart';
+import '../missions/mission_picker.dart';
 import '../sounds/sound_picker.dart';
 import 'alarm_labels.dart';
 import 'full_screen_alarm_banner.dart';
@@ -313,12 +315,14 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
   late String _ringtone;
   late VibrationSetting _vibration;
   late WakeStyle _wakeStyle;
+  late Mission _mission;
   late int _snoozeMinutes;
 
   /// Fields picked by hand; a category's defaults leave them alone.
   bool _ringtoneTouched = false;
   bool _vibrationTouched = false;
   bool _wakeStyleTouched = false;
+  bool _missionTouched = false;
   late int _reincarnationCount;
   late int _reincarnationIntervalMinutes;
   bool _saving = false;
@@ -364,6 +368,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
     _ringtone = alarm?.ringtone ?? Ringtone.followDefault;
     _vibration = alarm?.vibration ?? settings.defaultVibration;
     _wakeStyle = alarm?.wakeStyle ?? settings.defaultWakeStyle;
+    _mission = alarm?.mission ?? const Mission.none();
     _snoozeMinutes = _nearest(
       (alarm?.snoozeDuration ?? settings.defaultSnoozeDuration).inMinutes,
       _snoozeOptions,
@@ -594,6 +599,21 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
               ),
             ExpansionTile(
               tilePadding: EdgeInsets.zero,
+              title: const Text('Mission to dismiss'),
+              subtitle: Text(_mission.describe()),
+              childrenPadding: const EdgeInsets.only(bottom: 8),
+              children: [
+                MissionPicker(
+                  value: _mission,
+                  onChanged: (mission) => setState(() {
+                    _mission = mission;
+                    _missionTouched = true;
+                  }),
+                ),
+              ],
+            ),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
               title: const Text('Sound, wake style and snooze'),
               children: [
                 SoundPicker(
@@ -699,6 +719,9 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
     }
     if (!_wakeStyleTouched) {
       _wakeStyle = category?.defaultWakeStyle ?? settings.defaultWakeStyle;
+    }
+    if (!_missionTouched) {
+      _mission = category?.defaultMission ?? const Mission.none();
     }
   }
 
@@ -829,6 +852,7 @@ class _AlarmEditorState extends ConsumerState<_AlarmEditor> {
       ringtone: _ringtone,
       vibration: _vibration,
       wakeStyle: _wakeStyle,
+      mission: _mission,
       snoozeDuration: Duration(minutes: _snoozeMinutes),
       reincarnationCount: _reincarnationCount,
       reincarnationInterval: Duration(minutes: _reincarnationIntervalMinutes),

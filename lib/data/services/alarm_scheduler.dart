@@ -18,6 +18,7 @@ class NativeAlarmRequest {
     this.vibrate = true,
     this.loopAudio = true,
     this.fadeDuration = Duration.zero,
+    this.showStopButton = true,
   });
 
   final int id;
@@ -32,6 +33,9 @@ class NativeAlarmRequest {
 
   /// How long the volume takes to rise; zero starts at full volume.
   final Duration fadeDuration;
+
+  /// Off for alarms with a mission, which must be stopped in the app.
+  final bool showStopButton;
 }
 
 abstract interface class AlarmScheduler {
@@ -102,7 +106,7 @@ class NativeAlarmScheduler implements AlarmScheduler {
           notificationSettings: native_alarm.NotificationSettings(
             title: request.title,
             body: request.body,
-            stopButton: 'Stop',
+            stopButton: request.showStopButton ? 'Stop' : null,
             // android/app/src/main/res/drawable/ic_stat_alarm.xml
             icon: 'ic_stat_alarm',
           ),

@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/mission.dart';
 import '../../data/models/ringing_alarm.dart';
 import '../../data/models/ringtone.dart';
 import '../../data/services/alarm_scheduler.dart';
+import '../missions/mission_view.dart';
 import 'emoji_palette.dart';
 import 'swipe_up_to_confirm.dart';
 
@@ -36,6 +38,10 @@ class _RingScreenState extends ConsumerState<RingScreen> {
   late final ValueNotifier<RingingAlarm?> _ringing;
   bool _busy = false;
   bool _closing = false;
+
+  /// While a mission is on screen: the ring it belongs to and what to do
+  /// once it is completed.
+  (int, Future<void> Function())? _mission;
 
   @override
   void initState() {
@@ -94,6 +100,19 @@ class _RingScreenState extends ConsumerState<RingScreen> {
     }
   }
 
+  /// Runs [action] right away, or after [mission] is completed.
+  void _afterMission(
+    RingingAlarm ringing,
+    Mission mission,
+    Future<void> Function() action,
+  ) {
+    if (mission.isNone) {
+      _run(action);
+    } else {
+      setState(() => _mission = (ringing.nativeId, action));
+    }
+  }
+
   Future<void> _snooze(RingingAlarm ringing) {
     final handler = ref.read(alarmRingHandlerProvider);
     final alarm = ringing.alarm;
@@ -135,6 +154,13 @@ class _RingScreenState extends ConsumerState<RingScreen> {
               final category = _categoryFor(ringing, categories, testCategory);
               final emoji = category?.emoji ??
                   (ringing.nativeId == timerNativeId ? '⏳' : '⏰');
+              // The test alarm tries out its category's mission.
+              final mission = ringing.alarm?.mission ??
+                  (ringing.nativeId == testAlarmNativeId
+                      ? category?.defaultMission
+                      : null) ??
+                  const Mission.none();
+              final pending = _mission;
               return FutureBuilder<Color?>(
                 key: ValueKey(emoji),
                 future: EmojiPalette.seedColor(emoji),
@@ -150,22 +176,41 @@ class _RingScreenState extends ConsumerState<RingScreen> {
                               theme.brightness,
                             ),
                           ),
-                    child: _RingBody(
-                      ringing: ringing,
-                      emoji: emoji,
-                      category: category,
-                      busy: _busy,
-                      onSnooze: () => _run(() => _snooze(ringing)),
-                      onStop: () => _run(() =>
-                          ref.read(alarmRingHandlerProvider).stop(ringing)),
-                      onTurnOffReminders: ringing.alarm == null
-                          ? null
-                          : () => _run(() =>
-                              ref.read(alarmRingHandlerProvider).dismissAll(
-                                    ringing.alarm!,
-                                    nativeId: ringing.nativeId,
-                                  )),
-                    ),
+                    child: pending != null && pending.$1 == ringing.nativeId
+                        ? MissionView(
+                            mission: mission,
+                            onCompleted: () {
+                              setState(() => _mission = null);
+                              _run(pending.$2);
+                            },
+                            onBack: () => setState(() => _mission = null),
+                          )
+                        : _RingBody(
+                            ringing: ringing,
+                            emoji: emoji,
+                            category: category,
+                            busy: _busy,
+                            onSnooze: () => _run(() => _snooze(ringing)),
+                            onStop: () => _afterMission(
+                              ringing,
+                              mission,
+                              () => ref
+                                  .read(alarmRingHandlerProvider)
+                                  .stop(ringing),
+                            ),
+                            onTurnOffReminders: ringing.alarm == null
+                                ? null
+                                : () => _afterMission(
+                                      ringing,
+                                      mission,
+                                      () => ref
+                                          .read(alarmRingHandlerProvider)
+                                          .dismissAll(
+                                            ringing.alarm!,
+                                            nativeId: ringing.nativeId,
+                                          ),
+                                    ),
+                          ),
                   );
                 },
               );

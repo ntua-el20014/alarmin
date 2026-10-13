@@ -1,3 +1,4 @@
+import 'mission.dart';
 import 'recurrence_rule.dart';
 
 enum VibrationSetting { off, standard }
@@ -30,6 +31,7 @@ class AlarmModel {
     this.nextOccurrenceAt,
     this.skippedOccurrenceAt,
     this.wakeStyle = WakeStyle.normal,
+    this.mission = const Mission.none(),
   }) : assert(reincarnationCount >= 0);
 
   final String id;
@@ -41,6 +43,9 @@ class AlarmModel {
   final String ringtone;
   final VibrationSetting vibration;
   final WakeStyle wakeStyle;
+
+  /// Must be completed to dismiss (not to snooze) the alarm.
+  final Mission mission;
   final Duration snoozeDuration;
   final int reincarnationCount;
   final Duration reincarnationInterval;
@@ -64,6 +69,7 @@ class AlarmModel {
     String? ringtone,
     VibrationSetting? vibration,
     WakeStyle? wakeStyle,
+    Mission? mission,
     Duration? snoozeDuration,
     int? reincarnationCount,
     Duration? reincarnationInterval,
@@ -84,6 +90,7 @@ class AlarmModel {
       ringtone: ringtone ?? this.ringtone,
       vibration: vibration ?? this.vibration,
       wakeStyle: wakeStyle ?? this.wakeStyle,
+      mission: mission ?? this.mission,
       snoozeDuration: snoozeDuration ?? this.snoozeDuration,
       reincarnationCount: reincarnationCount ?? this.reincarnationCount,
       reincarnationInterval:

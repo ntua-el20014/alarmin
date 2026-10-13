@@ -586,6 +586,7 @@ class _CategorySection extends ConsumerWidget {
         vibration == VibrationSetting.off ? 'No vibration' : 'Vibrate',
       if (category.defaultWakeStyle case final style?)
         style == WakeStyle.gentle ? 'Gentle wake' : 'Normal wake',
+      if (category.defaultMission case final mission?) mission.describe(),
     ].join(' · ');
   }
 

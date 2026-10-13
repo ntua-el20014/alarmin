@@ -540,6 +540,7 @@ class AlarmService {
         fadeDuration: alarm.wakeStyle == WakeStyle.gentle
             ? gentleFadeDuration
             : Duration.zero,
+        showStopButton: alarm.mission.isNone,
       ),
     );
     if (!scheduled) {

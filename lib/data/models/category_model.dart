@@ -1,4 +1,5 @@
 import 'alarm_model.dart';
+import 'mission.dart';
 
 class CategoryModel {
   const CategoryModel({
@@ -10,6 +11,7 @@ class CategoryModel {
     this.defaultRingtone,
     this.defaultVibration,
     this.defaultWakeStyle,
+    this.defaultMission,
   });
 
   final String id;
@@ -24,8 +26,12 @@ class CategoryModel {
   final VibrationSetting? defaultVibration;
   final WakeStyle? defaultWakeStyle;
 
+  /// Null means no mission.
+  final Mission? defaultMission;
+
   bool get hasAlarmDefaults =>
       defaultRingtone != null ||
       defaultVibration != null ||
-      defaultWakeStyle != null;
+      defaultWakeStyle != null ||
+      defaultMission != null;
 }

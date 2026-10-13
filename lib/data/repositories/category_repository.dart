@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 import '../models/alarm_model.dart';
 import '../models/category_model.dart';
+import '../models/mission.dart';
 
 class CategoryRepository {
   CategoryRepository(this._database);
@@ -34,6 +35,10 @@ class CategoryRepository {
             defaultRingtone: Value(category.defaultRingtone),
             defaultVibration: Value(category.defaultVibration?.index),
             defaultWakeStyle: Value(category.defaultWakeStyle?.index),
+            defaultMissionType: Value(category.defaultMission?.type.index),
+            defaultMissionDifficulty:
+                Value(category.defaultMission?.difficulty.index),
+            defaultMissionCount: Value(category.defaultMission?.count),
             createdAt: category.createdAt,
             updatedAt: category.updatedAt,
           ),
@@ -63,6 +68,15 @@ class CategoryRepository {
       defaultWakeStyle: row.defaultWakeStyle == null
           ? null
           : WakeStyle.values[row.defaultWakeStyle!],
+      defaultMission: row.defaultMissionType == null ||
+              row.defaultMissionType == MissionType.none.index
+          ? null
+          : Mission(
+              type: MissionType.values[row.defaultMissionType!],
+              difficulty:
+                  MathDifficulty.values[row.defaultMissionDifficulty ?? 1],
+              count: row.defaultMissionCount ?? 0,
+            ),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     );

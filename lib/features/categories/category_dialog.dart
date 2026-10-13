@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../data/models/alarm_model.dart';
 import '../../data/models/category_model.dart';
+import '../../data/models/mission.dart';
+import '../missions/mission_picker.dart';
 import '../settings/emoji_input.dart';
 import '../sounds/sound_picker.dart';
 
@@ -28,6 +30,7 @@ Future<CategoryModel?> showCategoryEditor(
     defaultRingtone: result.ringtone,
     defaultVibration: result.vibration,
     defaultWakeStyle: result.wakeStyle,
+    defaultMission: result.mission.isNone ? null : result.mission,
     createdAt: category?.createdAt ?? now,
     updatedAt: now,
   );
@@ -46,6 +49,7 @@ class _CategoryDraft {
     required this.ringtone,
     required this.vibration,
     required this.wakeStyle,
+    required this.mission,
   });
 
   final String name;
@@ -53,6 +57,7 @@ class _CategoryDraft {
   final String? ringtone;
   final VibrationSetting? vibration;
   final WakeStyle? wakeStyle;
+  final Mission mission;
 }
 
 /// Owns its text controllers so they are disposed only after the dialog's
@@ -74,6 +79,8 @@ class _CategoryDialogState extends State<CategoryDialog> {
   late String? _ringtone = widget.category?.defaultRingtone;
   late VibrationSetting? _vibration = widget.category?.defaultVibration;
   late WakeStyle? _wakeStyle = widget.category?.defaultWakeStyle;
+  late Mission _mission =
+      widget.category?.defaultMission ?? const Mission.none();
 
   @override
   void dispose() {
@@ -103,6 +110,7 @@ class _CategoryDialogState extends State<CategoryDialog> {
         ringtone: _ringtone,
         vibration: _vibration,
         wakeStyle: _wakeStyle,
+        mission: _mission,
       ),
     );
   }
@@ -199,6 +207,13 @@ class _CategoryDialogState extends State<CategoryDialog> {
                 ),
               ],
               onChanged: (value) => setState(() => _wakeStyle = value),
+            ),
+            const SizedBox(height: 12),
+            Text('Mission to dismiss', style: theme.textTheme.labelLarge),
+            const SizedBox(height: 4),
+            MissionPicker(
+              value: _mission,
+              onChanged: (mission) => setState(() => _mission = mission),
             ),
             if (_error != null)
               Padding(

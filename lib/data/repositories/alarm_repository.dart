@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../database/app_database.dart';
 import '../models/alarm_model.dart';
+import '../models/mission.dart';
 import '../models/recurrence_rule.dart';
 
 class AlarmRepository {
@@ -104,6 +105,11 @@ class AlarmRepository {
       ringtone: row.ringtone,
       vibration: VibrationSetting.values[row.vibration],
       wakeStyle: WakeStyle.values[row.wakeStyle],
+      mission: Mission(
+        type: MissionType.values[row.missionType],
+        difficulty: MathDifficulty.values[row.missionDifficulty],
+        count: row.missionCount,
+      ),
       snoozeDuration: Duration(seconds: row.snoozeDurationSeconds),
       reincarnationCount: row.reincarnationCount,
       reincarnationInterval:
@@ -132,6 +138,9 @@ class AlarmRepository {
       ringtone: alarm.ringtone,
       vibration: alarm.vibration.index,
       wakeStyle: Value(alarm.wakeStyle.index),
+      missionType: Value(alarm.mission.type.index),
+      missionDifficulty: Value(alarm.mission.difficulty.index),
+      missionCount: Value(alarm.mission.count),
       snoozeDurationSeconds: alarm.snoozeDuration.inSeconds,
       reincarnationCount: alarm.reincarnationCount,
       reincarnationIntervalSeconds: alarm.reincarnationInterval.inSeconds,
