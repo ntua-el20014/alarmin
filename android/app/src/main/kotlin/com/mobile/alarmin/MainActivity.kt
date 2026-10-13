@@ -1,4 +1,4 @@
-package com.example.alarmin
+package com.mobile.alarmin
 
 import android.app.AppOpsManager
 import android.app.Notification

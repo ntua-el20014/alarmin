@@ -98,6 +98,8 @@ class NativeAlarmScheduler implements AlarmScheduler {
             title: request.title,
             body: request.body,
             stopButton: 'Stop',
+            // android/app/src/main/res/drawable/ic_stat_alarm.xml
+            icon: 'ic_stat_alarm',
           ),
         ),
       );
