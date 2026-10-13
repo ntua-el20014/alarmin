@@ -185,6 +185,24 @@ void main() {
       expect(container.read(ringingAlarmProvider).value, isNull);
     });
 
+    testWidgets('missions fit a short screen without overflowing',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 560); // a small phone
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      for (final mission in const [
+        Mission.shake(shakes: 10),
+        Mission.math(problems: 1),
+      ]) {
+        await tester.pumpWidget(const SizedBox()); // a fresh ring screen
+        await pumpTestAlarm(tester, mission);
+        await tester.tap(find.text('Stop'));
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+      }
+    });
+
     testWidgets('shake: stops after enough shakes; Back returns',
         (tester) async {
       final container =

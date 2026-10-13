@@ -187,19 +187,17 @@ class _MathMissionState extends ConsumerState<MathMission> {
     final textTheme = Theme.of(context).textTheme;
     final onBackground = colors.onPrimaryContainer;
 
-    return Column(
+    final problem = Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Spacer(),
         Text(
           'Problem ${_solved + 1} of ${widget.problems}',
           style: textTheme.labelLarge?.copyWith(color: onBackground),
         ),
         const SizedBox(height: 8),
-        FittedBox(
-          child: Text(
-            '${_problem.text} =',
-            style: textTheme.displayMedium?.copyWith(color: onBackground),
-          ),
+        Text(
+          '${_problem.text} =',
+          style: textTheme.displayMedium?.copyWith(color: onBackground),
         ),
         const SizedBox(height: 12),
         Container(
@@ -222,21 +220,45 @@ class _MathMissionState extends ConsumerState<MathMission> {
                 ?.copyWith(color: _wrong ? colors.error : onBackground),
           ),
         ),
-        const Spacer(),
-        _Keypad(onDigit: _type, onErase: _erase, onSubmit: _submit),
-        const SizedBox(height: 8),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The keypad takes up to 60% of the height; the problem scales
+        // down to fit whatever is left.
+        final keyHeight =
+            (constraints.maxHeight * 0.6 / 4 - 8).clamp(28.0, 60.0);
+        return Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: FittedBox(fit: BoxFit.scaleDown, child: problem),
+              ),
+            ),
+            _Keypad(
+              keyHeight: keyHeight,
+              onDigit: _type,
+              onErase: _erase,
+              onSubmit: _submit,
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
     );
   }
 }
 
 class _Keypad extends StatelessWidget {
   const _Keypad({
+    required this.keyHeight,
     required this.onDigit,
     required this.onErase,
     required this.onSubmit,
   });
 
+  final double keyHeight;
   final ValueChanged<String> onDigit;
   final VoidCallback onErase;
   final VoidCallback onSubmit;
@@ -248,7 +270,7 @@ class _Keypad extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(4),
           child: SizedBox(
-            height: 60,
+            height: keyHeight,
             child: filled
                 ? FilledButton(onPressed: onPressed, child: child)
                 : FilledButton.tonal(onPressed: onPressed, child: child),
@@ -329,42 +351,52 @@ class _ShakeMissionState extends ConsumerState<ShakeMission> {
     final onBackground = colors.onPrimaryContainer;
     final remaining = widget.shakes - _count;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 220,
-          height: 220,
-          child: Stack(
-            fit: StackFit.expand,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Leaves room for the text below on short screens.
+        final ringSize = (constraints.maxHeight - 150).clamp(96.0, 220.0);
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                value: _count / widget.shakes,
-                strokeWidth: 12,
-                color: onBackground,
-                backgroundColor: onBackground.withValues(alpha: 0.15),
-              ),
-              Center(
-                child: Text(
-                  '$remaining',
-                  style: textTheme.displayLarge?.copyWith(color: onBackground),
+              SizedBox(
+                width: ringSize,
+                height: ringSize,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    CircularProgressIndicator(
+                      value: _count / widget.shakes,
+                      strokeWidth: 12,
+                      color: onBackground,
+                      backgroundColor: onBackground.withValues(alpha: 0.15),
+                    ),
+                    Center(
+                      child: Text(
+                        '$remaining',
+                        style: textTheme.displayLarge
+                            ?.copyWith(color: onBackground),
+                      ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(height: 16),
+              Icon(Icons.vibration, size: 32, color: onBackground),
+              const SizedBox(height: 8),
+              Text(
+                'Shake your phone',
+                style: textTheme.headlineSmall?.copyWith(color: onBackground),
+              ),
+              Text(
+                '$_count of ${widget.shakes}',
+                style: textTheme.bodyLarge?.copyWith(color: onBackground),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 24),
-        Icon(Icons.vibration, size: 40, color: onBackground),
-        const SizedBox(height: 8),
-        Text(
-          'Shake your phone',
-          style: textTheme.headlineSmall?.copyWith(color: onBackground),
-        ),
-        Text(
-          '$_count of ${widget.shakes}',
-          style: textTheme.bodyLarge?.copyWith(color: onBackground),
-        ),
-      ],
+        );
+      },
     );
   }
 }

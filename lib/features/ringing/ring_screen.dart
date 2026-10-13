@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -48,11 +49,14 @@ class _RingScreenState extends ConsumerState<RingScreen> {
     super.initState();
     _ringing = ref.read(ringingAlarmProvider);
     _ringing.addListener(_closeWhenSilent);
+    // Shaking the phone for a mission would otherwise rotate the screen.
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
   void dispose() {
     _ringing.removeListener(_closeWhenSilent);
+    SystemChrome.setPreferredOrientations(const []);
     super.dispose();
   }
 
