@@ -280,7 +280,7 @@ class _RingBody extends StatelessWidget {
                 if (ringing.canSnooze) ...[
                   SwipeUpToConfirm(
                     label: 'Swipe up to snooze',
-                    icon: Icons.snooze,
+                    color: onBackground,
                     enabled: !busy,
                     onConfirmed: onSnooze,
                   ),
@@ -289,13 +289,12 @@ class _RingBody extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   height: 64,
-                  child: FilledButton.icon(
+                  child: FilledButton(
                     onPressed: busy ? null : onStop,
-                    icon: const Icon(Icons.alarm_off),
-                    label: Text(ringing.alarm == null ? 'Stop' : 'Dismiss'),
                     style: FilledButton.styleFrom(
                       textStyle: textTheme.titleLarge,
                     ),
+                    child: Text(ringing.alarm == null ? 'Stop' : 'Dismiss'),
                   ),
                 ),
                 if (reminders.isNotEmpty && onTurnOffReminders != null) ...[

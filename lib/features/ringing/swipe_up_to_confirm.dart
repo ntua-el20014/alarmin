@@ -6,15 +6,17 @@ class SwipeUpToConfirm extends StatefulWidget {
   const SwipeUpToConfirm({
     super.key,
     required this.label,
-    required this.icon,
     required this.onConfirmed,
+    this.color,
     this.enabled = true,
     this.threshold = 100,
   });
 
   final String label;
-  final IconData icon;
   final VoidCallback onConfirmed;
+
+  /// Arrow and label color; defaults to the theme's text color.
+  final Color? color;
   final bool enabled;
 
   /// How far, in logical pixels, the handle must travel upwards.
@@ -63,9 +65,8 @@ class _SwipeUpToConfirmState extends State<SwipeUpToConfirm>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final color = colors.onPrimaryContainer;
+    final color = widget.color ?? Theme.of(context).colorScheme.onSurface;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -92,30 +93,9 @@ class _SwipeUpToConfirmState extends State<SwipeUpToConfirm>
                       children: [
                         Icon(Icons.keyboard_double_arrow_up,
                             color: color, size: 32),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 28,
-                            vertical: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.secondaryContainer
-                                .withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(32),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(widget.icon,
-                                  color: colors.onSecondaryContainer),
-                              const SizedBox(width: 10),
-                              Text(
-                                widget.label,
-                                style: textTheme.titleMedium?.copyWith(
-                                  color: colors.onSecondaryContainer,
-                                ),
-                              ),
-                            ],
-                          ),
+                        Text(
+                          widget.label,
+                          style: textTheme.titleMedium?.copyWith(color: color),
                         ),
                       ],
                     ),

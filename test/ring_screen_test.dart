@@ -63,7 +63,6 @@ void main() {
               alignment: Alignment.bottomCenter,
               child: SwipeUpToConfirm(
                 label: 'Swipe up to snooze',
-                icon: Icons.snooze,
                 onConfirmed: () => confirmations.add(1),
               ),
             ),

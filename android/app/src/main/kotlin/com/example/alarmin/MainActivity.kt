@@ -1,6 +1,8 @@
 package com.example.alarmin
 
 import android.app.AppOpsManager
+import android.app.Notification
+import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -34,6 +36,9 @@ class MainActivity : FlutterActivity() {
     private companion object {
         /** Notification channel of the alarm plugin (NotificationService). */
         const val ALARM_CHANNEL_ID = "alarm_plugin_channel"
+
+        /** Where the alarm notification moves while the ring screen shows. */
+        const val QUIET_ALARM_CHANNEL_ID = "alarm_ringing_quiet"
 
         /**
          * MIUI/HyperOS app ops behind "Show on lock screen" and "Display
@@ -125,7 +130,8 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         val manager = getSystemService(NotificationManager::class.java)
         return manager.activeNotifications.any {
-            it.notification.channelId == ALARM_CHANNEL_ID
+            it.notification.channelId == ALARM_CHANNEL_ID ||
+                it.notification.channelId == QUIET_ALARM_CHANNEL_ID
         }
     }
 
@@ -140,6 +146,41 @@ class MainActivity : FlutterActivity() {
             if (show) window.addFlags(flags) else window.clearFlags(flags)
         }
         updateKeepScreenOn(ringing = show)
+        if (show) quietAlarmNotifications()
+    }
+
+    /**
+     * The ring screen already shows the alarm, so the plugin's heads-up
+     * notification on top of it is just clutter. It cannot be removed (it
+     * keeps the ringing service alive), so it is re-posted on a minimized,
+     * silent channel: it leaves the screen and the lock screen but stays in
+     * the notification shade with its Stop button.
+     */
+    private fun quietAlarmNotifications() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java)
+        try {
+            if (manager.getNotificationChannel(QUIET_ALARM_CHANNEL_ID) == null) {
+                manager.createNotificationChannel(
+                    NotificationChannel(
+                        QUIET_ALARM_CHANNEL_ID,
+                        "Ringing alarm (while on screen)",
+                        NotificationManager.IMPORTANCE_MIN,
+                    ).apply { setSound(null, null) }
+                )
+            }
+            for (active in manager.activeNotifications) {
+                if (active.notification.channelId != ALARM_CHANNEL_ID) continue
+                val quiet = Notification.Builder
+                    .recoverBuilder(this, active.notification)
+                    .setChannelId(QUIET_ALARM_CHANNEL_ID)
+                    .setFullScreenIntent(null, false)
+                    .build()
+                manager.notify(active.tag, active.id, quiet)
+            }
+        } catch (e: Exception) {
+            // Leave the notification as it is; the alarm still works.
+        }
     }
 
     private fun updateKeepScreenOn(ringing: Boolean) {
