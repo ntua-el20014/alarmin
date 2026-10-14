@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -49,14 +48,11 @@ class _RingScreenState extends ConsumerState<RingScreen> {
     super.initState();
     _ringing = ref.read(ringingAlarmProvider);
     _ringing.addListener(_closeWhenSilent);
-    // Shaking the phone for a mission would otherwise rotate the screen.
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   }
 
   @override
   void dispose() {
     _ringing.removeListener(_closeWhenSilent);
-    SystemChrome.setPreferredOrientations(const []);
     super.dispose();
   }
 
@@ -269,7 +265,10 @@ class _RingBody extends StatelessWidget {
         ringing.title.isNotEmpty && ringing.title != category?.name;
 
     return Scaffold(
-      body: DecoratedBox(
+      body: Container(
+        // Fill the screen: on its own the background is only as wide as
+        // its content, leaving a dark band beside a narrow mission.
+        constraints: const BoxConstraints.expand(),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

@@ -66,7 +66,10 @@ class MissionView extends StatelessWidget {
     final onBackground = colors.onPrimaryContainer;
 
     return Scaffold(
-      body: DecoratedBox(
+      body: Container(
+        // Fill the screen: on its own the background is only as wide as
+        // its content, leaving a dark band beside a narrow mission.
+        constraints: const BoxConstraints.expand(),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,

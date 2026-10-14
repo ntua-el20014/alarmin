@@ -121,6 +121,11 @@ void main() {
 
   group('RingScreen with a mission', () {
     late StreamController<void> shakes;
+    late db.AppDatabase database;
+
+    // One database per test, even when a test pumps several ring screens.
+    setUp(() => database = db.AppDatabase(NativeDatabase.memory()));
+    tearDown(() => database.close());
 
     Future<ProviderContainer> pumpTestAlarm(
       WidgetTester tester,
@@ -130,8 +135,6 @@ void main() {
       addTearDown(shakes.close);
       final scheduler = FakeAlarmScheduler();
       addTearDown(scheduler.close);
-      final database = db.AppDatabase(NativeDatabase.memory());
-      addTearDown(database.close);
       final container = ProviderContainer(
         overrides: [
           databaseProvider.overrideWithValue(database),
@@ -211,6 +214,17 @@ void main() {
       await tester.tap(find.text('Stop'));
       await tester.pump();
       expect(find.text('Shake your phone'), findsOneWidget);
+      // The background covers the whole screen, not just the content.
+      final background = find
+          .descendant(
+            of: find.byType(MissionView),
+            matching: find.byType(Container),
+          )
+          .first;
+      expect(
+        tester.getSize(background),
+        tester.view.physicalSize / tester.view.devicePixelRatio,
+      );
 
       await tester.tap(find.text('Back (snooze instead)'));
       await tester.pump();

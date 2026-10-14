@@ -6,11 +6,13 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.lifecycle.Observer
 import com.gdelataillade.alarm.alarm.AlarmService
@@ -75,6 +77,30 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (isAlarmRinging()) showOverLockScreen(true)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        fillWindow()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) fillWindow()
+    }
+
+    /**
+     * Guard against the window keeping a stale, smaller size after a
+     * rotation attempt or after being shown over the lock screen (seen on
+     * MIUI as the ring screen drawn narrower with a black band beside it):
+     * makes the window fill the screen and lays it out again.
+     */
+    private fun fillWindow() {
+        window.setLayout(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT,
+        )
+        window.decorView.post { window.decorView.requestLayout() }
     }
 
     override fun onResume() {

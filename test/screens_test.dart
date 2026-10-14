@@ -83,7 +83,8 @@ void main() {
 
     await tester.tap(find.byTooltip('More options'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Group by category'));
+    // The item's label ignores pointers; the item itself handles the tap.
+    await tester.tap(find.byType(CheckedPopupMenuItem<String>));
     await tester.pumpAndSettle();
 
     expect(saved.single.isGroupedView, isTrue);
