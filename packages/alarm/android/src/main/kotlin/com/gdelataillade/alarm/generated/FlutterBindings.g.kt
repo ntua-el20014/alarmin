@@ -163,7 +163,12 @@ data class AlarmSettingsWire (
    * with the [auto_start_flutter](https://pub.dev/packages/auto_start_flutter)
    * package.
    */
-  val androidFullScreenIntent: Boolean
+  val androidFullScreenIntent: Boolean,
+  /**
+   * Alarmin patch: seconds after which a ring nobody answers stops by
+   * itself, like a Stop from the notification. Null rings until stopped.
+   */
+  val ringTimeout: Double? = null
 )
  {
   companion object {
@@ -179,7 +184,8 @@ data class AlarmSettingsWire (
       val fadeDuration = pigeonVar_list[8] as Double
       val warningNotificationOnKill = pigeonVar_list[9] as Boolean
       val androidFullScreenIntent = pigeonVar_list[10] as Boolean
-      return AlarmSettingsWire(id, millisecondsSinceEpoch, assetAudioPath, notificationSettings, loopAudio, vibrate, volume, volumeEnforced, fadeDuration, warningNotificationOnKill, androidFullScreenIntent)
+      val ringTimeout = pigeonVar_list.getOrNull(11) as Double?
+      return AlarmSettingsWire(id, millisecondsSinceEpoch, assetAudioPath, notificationSettings, loopAudio, vibrate, volume, volumeEnforced, fadeDuration, warningNotificationOnKill, androidFullScreenIntent, ringTimeout)
     }
   }
   fun toList(): List<Any?> {
@@ -195,6 +201,7 @@ data class AlarmSettingsWire (
       fadeDuration,
       warningNotificationOnKill,
       androidFullScreenIntent,
+      ringTimeout,
     )
   }
 }

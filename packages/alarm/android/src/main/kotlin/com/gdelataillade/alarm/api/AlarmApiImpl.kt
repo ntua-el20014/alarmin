@@ -104,6 +104,7 @@ class AlarmApiImpl(private val context: Context) : AlarmApi {
         intent.putExtra("volumeEnforced", alarm.volumeEnforced)
         intent.putExtra("fadeDuration", alarm.fadeDuration)
         intent.putExtra("fullScreenIntent", alarm.androidFullScreenIntent)
+        alarm.ringTimeout?.let { intent.putExtra("ringTimeout", it) }
 
         val notificationSettingsMap = alarm.notificationSettings
         val gson = Gson()

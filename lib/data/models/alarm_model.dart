@@ -11,7 +11,7 @@ enum WakeStyle {
   gentle,
 }
 
-const gentleFadeDuration = Duration(seconds: 30);
+const gentleFadeDuration = Duration(seconds: 20);
 
 class AlarmModel {
   const AlarmModel({

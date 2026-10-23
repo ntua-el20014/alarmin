@@ -29,6 +29,7 @@ class AlarmSettingsWire {
     this.fadeDuration = 0.0,
     this.warningNotificationOnKill = true,
     this.androidFullScreenIntent = true,
+    this.ringTimeout,
   });
 
   /// Unique identifier assiocated with the alarm. Cannot be 0 or -1;
@@ -114,6 +115,11 @@ class AlarmSettingsWire {
   /// with the [auto_start_flutter](https://pub.dev/packages/auto_start_flutter)
   /// package.
   final bool androidFullScreenIntent;
+
+  /// Alarmin patch (Android only): seconds after which a ring nobody answers
+  /// stops by itself, like a Stop from the notification. Null rings until
+  /// stopped.
+  final double? ringTimeout;
 }
 
 /// Model for notification settings.

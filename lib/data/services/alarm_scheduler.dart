@@ -19,6 +19,7 @@ class NativeAlarmRequest {
     this.loopAudio = true,
     this.fadeDuration = Duration.zero,
     this.showStopButton = true,
+    this.ringTimeout,
   });
 
   final int id;
@@ -36,6 +37,9 @@ class NativeAlarmRequest {
 
   /// Off for alarms with a mission, which must be stopped in the app.
   final bool showStopButton;
+
+  /// How long the ring lasts if nobody answers it; null rings until stopped.
+  final Duration? ringTimeout;
 }
 
 abstract interface class AlarmScheduler {
@@ -103,6 +107,9 @@ class NativeAlarmScheduler implements AlarmScheduler {
           fadeDuration: request.fadeDuration.inMilliseconds / 1000,
           warningNotificationOnKill: Platform.isIOS,
           androidFullScreenIntent: true,
+          ringTimeout: request.ringTimeout == null
+              ? null
+              : request.ringTimeout!.inMilliseconds / 1000,
           notificationSettings: native_alarm.NotificationSettings(
             title: request.title,
             body: request.body,

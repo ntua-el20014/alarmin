@@ -61,6 +61,7 @@ class AlarmSettingsWire {
     this.fadeDuration = 0.0,
     this.warningNotificationOnKill = true,
     this.androidFullScreenIntent = true,
+    this.ringTimeout,
   });
 
   /// Unique identifier assiocated with the alarm. Cannot be 0 or -1;
@@ -147,6 +148,11 @@ class AlarmSettingsWire {
   /// package.
   bool androidFullScreenIntent;
 
+  /// Alarmin patch (Android only): seconds after which a ring nobody answers
+  /// stops by itself, like a Stop from the notification. Null rings until
+  /// stopped.
+  double? ringTimeout;
+
   Object encode() {
     return <Object?>[
       id,
@@ -160,6 +166,7 @@ class AlarmSettingsWire {
       fadeDuration,
       warningNotificationOnKill,
       androidFullScreenIntent,
+      ringTimeout,
     ];
   }
 
@@ -177,6 +184,8 @@ class AlarmSettingsWire {
       fadeDuration: result[8]! as double,
       warningNotificationOnKill: result[9]! as bool,
       androidFullScreenIntent: result[10]! as bool,
+      // Hand-added field: hosts that do not send it (iOS) leave it out.
+      ringTimeout: result.length > 11 ? result[11] as double? : null,
     );
   }
 }

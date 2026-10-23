@@ -19,6 +19,7 @@ class AlarmSettings {
     this.fadeDuration = 0.0,
     this.warningNotificationOnKill = true,
     this.androidFullScreenIntent = true,
+    this.ringTimeout,
   });
 
   /// Converts from wire datatype.
@@ -35,7 +36,8 @@ class AlarmSettings {
         volumeEnforced = wire.volumeEnforced,
         fadeDuration = wire.fadeDuration,
         warningNotificationOnKill = wire.warningNotificationOnKill,
-        androidFullScreenIntent = wire.androidFullScreenIntent;
+        androidFullScreenIntent = wire.androidFullScreenIntent,
+        ringTimeout = wire.ringTimeout;
 
   /// Constructs an `AlarmSettings` instance from the given JSON data.
   factory AlarmSettings.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class AlarmSettings {
       fadeDuration: json['fadeDuration'] as double? ?? 0.0,
       warningNotificationOnKill: warningNotificationOnKill,
       androidFullScreenIntent: json['androidFullScreenIntent'] as bool? ?? true,
+      ringTimeout: (json['ringTimeout'] as num?)?.toDouble(),
     );
   }
 
@@ -161,6 +164,11 @@ class AlarmSettings {
   /// package.
   final bool androidFullScreenIntent;
 
+  /// Alarmin patch (Android only): seconds after which a ring nobody answers
+  /// stops by itself, like a Stop from the notification. Null rings until
+  /// stopped.
+  final double? ringTimeout;
+
   /// Converts to wire datatype which is used for host platform communication.
   AlarmSettingsWire toWire() => AlarmSettingsWire(
         id: id,
@@ -174,6 +182,7 @@ class AlarmSettings {
         fadeDuration: fadeDuration,
         warningNotificationOnKill: warningNotificationOnKill,
         androidFullScreenIntent: androidFullScreenIntent,
+        ringTimeout: ringTimeout,
       );
 
   /// Returns a hash code for this `AlarmSettings` instance using
@@ -193,6 +202,7 @@ class AlarmSettings {
     hash = hash ^ fadeDuration.hashCode;
     hash = hash ^ warningNotificationOnKill.hashCode;
     hash = hash ^ androidFullScreenIntent.hashCode;
+    hash = hash ^ ringTimeout.hashCode;
     hash = hash & 0x3fffffff;
 
     return hash;
@@ -214,6 +224,7 @@ class AlarmSettings {
     String? notificationBody,
     bool? warningNotificationOnKill,
     bool? androidFullScreenIntent,
+    double? ringTimeout,
   }) {
     return AlarmSettings(
       id: id ?? this.id,
@@ -229,6 +240,7 @@ class AlarmSettings {
           warningNotificationOnKill ?? this.warningNotificationOnKill,
       androidFullScreenIntent:
           androidFullScreenIntent ?? this.androidFullScreenIntent,
+      ringTimeout: ringTimeout ?? this.ringTimeout,
     );
   }
 
@@ -245,6 +257,7 @@ class AlarmSettings {
         'fadeDuration': fadeDuration,
         'warningNotificationOnKill': warningNotificationOnKill,
         'androidFullScreenIntent': androidFullScreenIntent,
+        'ringTimeout': ringTimeout,
       };
 
   /// Returns all the properties of `AlarmSettings` for debug purposes.
@@ -272,5 +285,6 @@ class AlarmSettings {
           volume == other.volume &&
           fadeDuration == other.fadeDuration &&
           warningNotificationOnKill == other.warningNotificationOnKill &&
-          androidFullScreenIntent == other.androidFullScreenIntent;
+          androidFullScreenIntent == other.androidFullScreenIntent &&
+          ringTimeout == other.ringTimeout;
 }

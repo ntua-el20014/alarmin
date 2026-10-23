@@ -17,7 +17,9 @@ data class AlarmSettings(
     val volumeEnforced: Boolean = false,
     val fadeDuration: Double,
     val warningNotificationOnKill: Boolean,
-    val androidFullScreenIntent: Boolean
+    val androidFullScreenIntent: Boolean,
+    /** Alarmin patch: see AlarmSettingsWire.ringTimeout. */
+    val ringTimeout: Double? = null
 ) {
     companion object {
         fun fromWire(e: AlarmSettingsWire): AlarmSettings {
@@ -33,6 +35,7 @@ data class AlarmSettings(
                 e.fadeDuration,
                 e.warningNotificationOnKill,
                 e.androidFullScreenIntent,
+                e.ringTimeout,
             )
         }
 
@@ -62,6 +65,7 @@ data class AlarmSettings(
             fadeDuration,
             warningNotificationOnKill,
             androidFullScreenIntent,
+            ringTimeout,
         )
     }
 

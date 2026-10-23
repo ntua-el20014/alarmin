@@ -14,6 +14,11 @@ import 'upcoming_alarm_notices.dart';
 /// occurrence); each reminder owns a native id.
 const maxReincarnationCount = 10;
 
+/// A ring that has a reminder still to come stops by itself after this long
+/// if nobody answers it: the reminder rings again later anyway. Every other
+/// ring (no reminders, or the last one) keeps ringing until it is stopped.
+const unansweredRingTimeout = Duration(seconds: 40);
+
 /// Native ids an alarm owns:
 /// - primary: the next regular occurrence;
 /// - follow-up: the occurrence after that, so a recurring alarm still rings
@@ -151,11 +156,14 @@ class AlarmService {
       _serialized(() async {
         final current = await _repository.findById(alarm.id) ?? alarm;
         await _stopRinging(current.id, ringingNativeId);
+        final snoozedUntil = _now().add(current.snoozeDuration);
         await _set(
           snoozeNativeId(current.id),
-          _now().add(current.snoozeDuration),
+          snoozedUntil,
           current,
           body: 'Snoozed',
+          ringsAgain: (await _upcomingReminders(current.id))
+              .any((at) => at.isAfter(snoozedUntil)),
         );
         await _advance(current);
       });
@@ -328,15 +336,20 @@ class AlarmService {
     }
 
     final title = await _notificationTitle(updated);
+    final hasReminders = updated.reincarnationCount > 0;
     await _set(primaryNativeId(updated.id), next, updated,
-        title: title, body: _occurrenceBody(updated));
+        title: title,
+        body: _occurrenceBody(updated),
+        ringsAgain: hasReminders);
     await _ensureReminders(updated, next, title);
     DateTime? following;
     if (updated.recurrence.scheduleType != AlarmScheduleType.once) {
       following = updated.recurrence.nextOccurrenceAfter(next);
       if (following != null) {
         await _set(followUpNativeId(updated.id), following, updated,
-            title: title, body: _occurrenceBody(updated));
+            title: title,
+            body: _occurrenceBody(updated),
+            ringsAgain: hasReminders);
         await _ensureReminders(updated, following, title);
       }
     }
@@ -419,6 +432,7 @@ class AlarmService {
         alarm,
         title: notificationTitle,
         body: 'Reminder $index of ${run.reminderCount}',
+        ringsAgain: index < run.reminderCount,
       );
     }
   }
@@ -527,6 +541,7 @@ class AlarmService {
     AlarmModel alarm, {
     String? title,
     String body = 'Alarm',
+    bool ringsAgain = false,
   }) async {
     if (!_scheduler.isSupported) return;
     final scheduled = await _scheduler.schedule(
@@ -541,6 +556,7 @@ class AlarmService {
             ? gentleFadeDuration
             : Duration.zero,
         showStopButton: alarm.mission.isNone,
+        ringTimeout: ringsAgain ? unansweredRingTimeout : null,
       ),
     );
     if (!scheduled) {

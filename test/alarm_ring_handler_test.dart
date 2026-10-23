@@ -183,6 +183,52 @@ void main() {
     expect(ringing.value, isNull);
   });
 
+  test('only rings with a reminder still to come stop by themselves',
+      () async {
+    now = DateTime(2026, 9, 21, 6);
+    final alarm = await service.save(
+      _alarm(recurrence: AlarmScheduleType.daily, reminders: 2),
+    );
+
+    final tomorrow = DateTime(2026, 9, 22, 7);
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.ringTimeout,
+        unansweredRingTimeout);
+    expect(scheduler.active[followUpNativeId(alarm.id)]?.ringTimeout,
+        unansweredRingTimeout);
+    expect(scheduler.active[reminder(alarm, 1)]?.ringTimeout,
+        unansweredRingTimeout);
+    expect(scheduler.active[reminder(alarm, 2)]?.ringTimeout, isNull);
+    expect(
+      scheduler.active[reminder(alarm, 2, occurrence: tomorrow)]?.ringTimeout,
+      isNull,
+    );
+  });
+
+  test('an alarm without reminders rings until it is stopped', () async {
+    now = DateTime(2026, 9, 21, 6);
+    final alarm = await service.save(
+      _alarm(recurrence: AlarmScheduleType.daily, reminders: 0),
+    );
+
+    expect(scheduler.active[primaryNativeId(alarm.id)]?.ringTimeout, isNull);
+    expect(scheduler.active[followUpNativeId(alarm.id)]?.ringTimeout, isNull);
+  });
+
+  test('a snooze stops by itself only if a reminder comes after it',
+      () async {
+    // Snoozed until 07:10, which is also the last of two reminders.
+    var alarm = await ringingAlarm(reminders: 2);
+    await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
+    expect(scheduler.active[snoozeNativeId(alarm.id)]?.ringTimeout, isNull);
+
+    await service.delete(alarm);
+    // A third reminder at 07:15 is still to come after the snooze.
+    alarm = await ringingAlarm(reminders: 3);
+    await handler.snooze(alarm, nativeId: primaryNativeId(alarm.id));
+    expect(scheduler.active[snoozeNativeId(alarm.id)]?.ringTimeout,
+        unansweredRingTimeout);
+  });
+
   test('a one-time alarm is deleted only after its last reminder', () async {
     final alarm = await ringingAlarm(
       type: AlarmScheduleType.once,

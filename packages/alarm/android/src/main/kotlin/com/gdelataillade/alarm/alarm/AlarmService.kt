@@ -35,9 +35,6 @@ class AlarmService : Service() {
     companion object {
         @JvmStatic
         var ringingAlarmIds: List<Int> = listOf()
-
-        /** Alarmin patch: how long an alarm rings before it goes quiet. */
-        const val RING_TIMEOUT_MS = 40_000L
     }
 
     override fun onCreate() {
@@ -131,6 +128,7 @@ class AlarmService : Service() {
         val volume = intent.getDoubleExtra("volume", -1.0)
         val volumeEnforced = intent.getBooleanExtra("volumeEnforced", false)
         val fadeDuration = intent.getDoubleExtra("fadeDuration", 0.0)
+        val ringTimeout = intent.getDoubleExtra("ringTimeout", 0.0)
 
         // Notify the plugin about the alarm ringing
         AlarmPlugin.alarmTriggerApi?.alarmRang(id.toLong()) {
@@ -156,7 +154,7 @@ class AlarmService : Service() {
 
         // Play the alarm audio
         audioService?.playAudio(id, assetAudioPath, loopAudio, fadeDuration)
-        scheduleRingTimeout(id)
+        if (ringTimeout > 0) scheduleRingTimeout(id, (ringTimeout * 1000).toLong())
 
         // Update the list of ringing alarms
         ringingAlarmIds = audioService?.getPlayingMediaPlayersIds() ?: listOf()
@@ -176,18 +174,18 @@ class AlarmService : Service() {
 
     /**
      * Alarmin patch: an alarm nobody answers stops by itself after
-     * [RING_TIMEOUT_MS], exactly like a Stop from the notification, so the
-     * app reschedules it and its reminders ring again later. Runs natively so
-     * it also works while the app is killed.
+     * [timeoutMs] (the alarm's `ringTimeout`), exactly like a Stop from the
+     * notification, so the app reschedules it and its next reminder rings
+     * later. Runs natively so it also works while the app is killed.
      */
-    private fun scheduleRingTimeout(id: Int) {
+    private fun scheduleRingTimeout(id: Int, timeoutMs: Long) {
         cancelRingTimeout(id)
         val timeout = Runnable {
             ringTimeouts.remove(id)
             unsaveAlarm(id)
         }
         ringTimeouts[id] = timeout
-        handler.postDelayed(timeout, RING_TIMEOUT_MS)
+        handler.postDelayed(timeout, timeoutMs)
     }
 
     private fun cancelRingTimeout(id: Int) {
