@@ -54,3 +54,7 @@ app.*.map.json
 # JVM crash logs written by Gradle when the machine runs out of memory.
 hs_err_pid*.log
 replay_pid*.log
+
+# Local-only notes, kept out of the public repo.
+CLAUDE.md
+ROADMAP.md

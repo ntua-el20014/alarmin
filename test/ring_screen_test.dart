@@ -10,6 +10,7 @@ import 'package:alarmin/data/models/app_settings.dart';
 import 'package:alarmin/data/models/category_model.dart';
 import 'package:alarmin/data/models/recurrence_rule.dart';
 import 'package:alarmin/data/models/ringing_alarm.dart';
+import 'package:alarmin/data/services/alarm_ring_handler.dart';
 import 'package:alarmin/data/services/alarm_scheduler.dart';
 import 'package:alarmin/features/ringing/emoji_palette.dart';
 import 'package:alarmin/features/ringing/ring_screen.dart';
@@ -169,14 +170,17 @@ void main() {
 
     Future<ProviderContainer> pumpRingScreen(
       WidgetTester tester,
-      RingingAlarm ringing,
-    ) async {
+      RingingAlarm ringing, {
+      AlarmRingHandler? handler,
+    }) async {
       final container = ProviderContainer(
         overrides: [
           categoriesProvider.overrideWith((ref) => Stream.value([category])),
           settingsProvider.overrideWith(
             (ref) => Stream.value(const AppSettings.defaults()),
           ),
+          if (handler != null)
+            alarmRingHandlerProvider.overrideWithValue(handler),
         ],
       );
       addTearDown(container.dispose);
@@ -238,7 +242,74 @@ void main() {
       expect(find.text('⏰'), findsOneWidget);
       expect(find.text('Swipe up to snooze'), findsOneWidget);
     });
+
+    group('with reminders to come', () {
+      RingingAlarm withReminders() => RingingAlarm(
+            nativeId: 1,
+            title: 'Vitamins',
+            alarm: _alarm(),
+            canSnooze: true,
+            upcomingReminders: [DateTime(2026, 9, 21, 8, 5)],
+          );
+
+      testWidgets('a tap on Dismiss keeps the reminders', (tester) async {
+        final handler = _RecordingRingHandler();
+        await pumpRingScreen(tester, withReminders(), handler: handler);
+
+        expect(
+          find.text('Hold Dismiss to turn off reminders too'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('Dismiss'));
+        await tester.pump();
+
+        expect(handler.calls, ['stop']);
+      });
+
+      testWidgets('holding Dismiss turns the reminders off too',
+          (tester) async {
+        final handler = _RecordingRingHandler();
+        await pumpRingScreen(tester, withReminders(), handler: handler);
+
+        await tester.longPress(find.text('Dismiss'));
+        await tester.pump();
+
+        expect(handler.calls, ['dismissAll']);
+      });
+    });
+
+    testWidgets('without reminders there is nothing to hold for',
+        (tester) async {
+      final handler = _RecordingRingHandler();
+      await pumpRingScreen(
+        tester,
+        RingingAlarm(
+          nativeId: 1,
+          title: 'Vitamins',
+          alarm: _alarm(),
+          canSnooze: true,
+        ),
+        handler: handler,
+      );
+
+      expect(find.text('Hold Dismiss to turn off reminders too'), findsNothing);
+      await tester.longPress(find.text('Dismiss'));
+      await tester.pump();
+
+      expect(handler.calls, ['stop']);
+    });
   });
+}
+
+class _RecordingRingHandler extends Fake implements AlarmRingHandler {
+  final calls = <String>[];
+
+  @override
+  Future<void> stop(RingingAlarm ringing) async => calls.add('stop');
+
+  @override
+  Future<void> dismissAll(AlarmModel alarm, {int? nativeId}) async =>
+      calls.add('dismissAll');
 }
 
 AlarmModel _alarm({String? categoryId}) {

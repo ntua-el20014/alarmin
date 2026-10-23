@@ -17,6 +17,8 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import com.gdelataillade.alarm.services.AlarmRingingLiveData
 import com.gdelataillade.alarm.services.NotificationHandler
@@ -27,10 +29,15 @@ class AlarmService : Service() {
     private var vibrationService: VibrationService? = null
     private var volumeService: VolumeService? = null
     private var showSystemUI: Boolean = true
+    private val handler = Handler(Looper.getMainLooper())
+    private val ringTimeouts = mutableMapOf<Int, Runnable>()
 
     companion object {
         @JvmStatic
         var ringingAlarmIds: List<Int> = listOf()
+
+        /** Alarmin patch: how long an alarm rings before it goes quiet. */
+        const val RING_TIMEOUT_MS = 40_000L
     }
 
     override fun onCreate() {
@@ -149,6 +156,7 @@ class AlarmService : Service() {
 
         // Play the alarm audio
         audioService?.playAudio(id, assetAudioPath, loopAudio, fadeDuration)
+        scheduleRingTimeout(id)
 
         // Update the list of ringing alarms
         ringingAlarmIds = audioService?.getPlayingMediaPlayersIds() ?: listOf()
@@ -164,6 +172,26 @@ class AlarmService : Service() {
         wakeLock.acquire(5 * 60 * 1000L) // Acquire for 5 minutes
 
         return START_STICKY
+    }
+
+    /**
+     * Alarmin patch: an alarm nobody answers stops by itself after
+     * [RING_TIMEOUT_MS], exactly like a Stop from the notification, so the
+     * app reschedules it and its reminders ring again later. Runs natively so
+     * it also works while the app is killed.
+     */
+    private fun scheduleRingTimeout(id: Int) {
+        cancelRingTimeout(id)
+        val timeout = Runnable {
+            ringTimeouts.remove(id)
+            unsaveAlarm(id)
+        }
+        ringTimeouts[id] = timeout
+        handler.postDelayed(timeout, RING_TIMEOUT_MS)
+    }
+
+    private fun cancelRingTimeout(id: Int) {
+        ringTimeouts.remove(id)?.let { handler.removeCallbacks(it) }
     }
 
     /** Alarmin patch: turns the display on, like the Clock app. */
@@ -227,6 +255,7 @@ class AlarmService : Service() {
     }
 
     private fun stopAlarm(id: Int) {
+        cancelRingTimeout(id)
         AlarmRingingLiveData.instance.update(false)
         try {
             val playingIds = audioService?.getPlayingMediaPlayersIds() ?: listOf()
@@ -254,6 +283,8 @@ class AlarmService : Service() {
 
     override fun onDestroy() {
         ringingAlarmIds = listOf()
+        handler.removeCallbacksAndMessages(null)
+        ringTimeouts.clear()
 
         audioService?.cleanUp()
         vibrationService?.stopVibrating()

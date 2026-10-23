@@ -16,4 +16,10 @@ removed. Changes:
   Android honouring the full-screen intent, which Android 14+ downgrades to a
   plain notification without the full-screen permission.
 
+- `android/.../alarm/AlarmService.kt`: a ring nobody answers stops by itself
+  after `RING_TIMEOUT_MS` (40 s), the same way as a Stop from the
+  notification (`unsaveAlarm`), so Flutter gets `alarmStopped` and
+  reschedules. The timeout runs natively, so it also works while the app is
+  killed. It is cancelled when the alarm is stopped any other way.
+
 Re-apply these if the plugin is upgraded.

@@ -263,6 +263,8 @@ class _RingBody extends StatelessWidget {
     final onBackground = colors.onPrimaryContainer;
     final showTitle =
         ringing.title.isNotEmpty && ringing.title != category?.name;
+    final canTurnOffReminders =
+        reminders.isNotEmpty && onTurnOffReminders != null;
 
     return Scaffold(
       body: Container(
@@ -339,19 +341,24 @@ class _RingBody extends StatelessWidget {
                   height: 64,
                   child: FilledButton(
                     onPressed: busy ? null : onStop,
+                    // A tap keeps the reminders, which exist precisely to
+                    // survive an accidental dismiss; a deliberate hold turns
+                    // them off as well.
+                    onLongPress: busy || !canTurnOffReminders
+                        ? null
+                        : onTurnOffReminders,
                     style: FilledButton.styleFrom(
                       textStyle: textTheme.titleLarge,
                     ),
                     child: Text(ringing.alarm == null ? 'Stop' : 'Dismiss'),
                   ),
                 ),
-                if (reminders.isNotEmpty && onTurnOffReminders != null) ...[
-                  const SizedBox(height: 8),
-                  _HoldButton(
-                    label: 'Hold to turn off reminders',
-                    enabled: !busy,
-                    color: onBackground,
-                    onConfirmed: onTurnOffReminders!,
+                if (canTurnOffReminders) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Hold Dismiss to turn off reminders too',
+                    style: textTheme.labelLarge?.copyWith(color: onBackground),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ],
@@ -395,84 +402,6 @@ class _PulsingEmojiState extends State<_PulsingEmoji>
       child: Text(
         widget.emoji,
         style: const TextStyle(fontSize: 160, height: 1.1),
-      ),
-    );
-  }
-}
-
-/// A button that only fires after being held down for [holdDuration], with
-/// a progress bar filling up meanwhile. Used to turn off reminders, which
-/// exist precisely to survive an accidental tap.
-class _HoldButton extends StatefulWidget {
-  const _HoldButton({
-    required this.label,
-    required this.enabled,
-    required this.color,
-    required this.onConfirmed,
-  });
-
-  static const holdDuration = Duration(milliseconds: 1500);
-
-  final String label;
-  final bool enabled;
-  final Color color;
-  final VoidCallback onConfirmed;
-
-  @override
-  State<_HoldButton> createState() => _HoldButtonState();
-}
-
-class _HoldButtonState extends State<_HoldButton>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _progress = AnimationController(
-    vsync: this,
-    duration: _HoldButton.holdDuration,
-  )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _progress.reset();
-        widget.onConfirmed();
-      }
-    });
-
-  @override
-  void dispose() {
-    _progress.dispose();
-    super.dispose();
-  }
-
-  void _release() {
-    if (_progress.status != AnimationStatus.completed) _progress.reverse();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.enabled ? (_) => _progress.forward() : null,
-      onTapUp: (_) => _release(),
-      onTapCancel: _release,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          children: [
-            Text(
-              widget.label,
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: widget.color),
-            ),
-            const SizedBox(height: 6),
-            AnimatedBuilder(
-              animation: _progress,
-              builder: (context, _) => LinearProgressIndicator(
-                value: _progress.value,
-                color: widget.color,
-                backgroundColor: widget.color.withValues(alpha: 0.15),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
